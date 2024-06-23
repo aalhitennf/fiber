@@ -1,13 +1,11 @@
-use std::{path::Path, str::Chars};
+use std::{path::Path, rc::Rc};
 
 pub type Result<I> = std::result::Result<I, Box<dyn std::error::Error>>;
 
-#[derive(Default)]
 pub struct Lexer<'a> {
-    source: String,
-    chars: Vec<char>,
+    source: Rc<String>,
     tokens: Vec<Token<'a>>,
-    // cursor: usize,
+    cursor: Cursor,
 }
 
 #[derive(Debug)]
@@ -46,96 +44,32 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn new(s: &str) -> Result<Self> {
-        let source = s.trim().to_string();
+        let source = Rc::new(s.trim().to_string());
         let source_len = source.len();
+        let cursor = Cursor::new(source.clone());
 
         let lexer = Self {
             source,
             tokens: Vec::with_capacity(source_len),
-            ..Lexer::default()
+            cursor,
         };
 
         Ok(lexer)
     }
 
     pub fn lex(&mut self) {
-        let mut line = 0;
-        let mut col = 0;
-        let mut cursor = 0;
-
-        let mut opening_tag = false;
-        let mut closing_tag = false;
-
-        self.source = self.source.trim().to_string();
-
-        if self.source.is_empty() {
-            return;
-        }
-
-        let mut chars = self.source.chars();
-
-        let advance_word = |chars: &mut Chars, cursor: &mut usize| {
-            let mut buf = String::with_capacity(256);
-            while let Some(ch) = chars.next() {
-                *cursor += 1;
-
-                if ch.is_alphanumeric() {
-                    buf.push(ch);
-                } else {
-                    break;
-                }
-            }
-            buf
-        };
-
-        // let read_to_tag_end = |chars: &mut Chars| {
-        //     let mut buf = String::with_capacity(256);
-        //     while let Some(ch) = chars.next() {
-        //         if ch == '>' {
-        //             break;
-        //         } else {
-        //             buf.push(ch);
-        //         }
-        //     }
-        //     buf
-        // };
-
-        let read_tag_attributes = |cursor: &mut usize| -> &str {
-            let mut lookahead = cursor.clone();
-
-            loop {
-                lookahead += 1;
-                let next = self.chars.get(lookahead);
-
-                if next.is_none() {
-                    break;
-                }
-
-                if next.is_some_and(|ch| *ch == '>') {
-                    break;
-                }
-            }
-
-            *cursor = lookahead - 1;
-
-            &self.source[*cursor..=lookahead]
-        };
-
-        while let Some(current) = chars.next() {
-            if cursor == self.source.len() {
-                break;
-            }
-
-            match current {
+        while let Some(ch) = self.cursor.next() {
+            match ch {
                 '<' => {
                     self.tokens.push(Token::TagOpen);
-                    let tag_name = advance_word(&mut chars, &mut cursor);
+
+                    let tag_name = self.cursor.advance_word();
                     self.tokens.push(Token::Identifier(tag_name));
-                    // let attrs = read_to_tag_end(&mut chars);
-                    let attrs = read_tag_attributes(&mut cursor);
+
+                    let attrs = self.cursor.read_tag_definition();
                     self.tokens.push(Token::AttributeName(attrs.to_string()));
-                    // self.cursor = new_cursor;
-                    // self.tokens.push(Token::TagClose);
+
+                    self.tokens.push(Token::TagClose);
                 }
 
                 '>' => {
@@ -143,16 +77,89 @@ impl<'a> Lexer<'a> {
                 }
 
                 '\n' => {
-                    line += 1;
-                    col = 0;
+                    // line += 1;
+                    // col = 0;
                 }
 
-                _ => (),
+                other => (),
+                // other => self.tokens.push(Token::Char(other)),
             }
-
-            cursor += 1;
-            col += 1;
         }
+    }
+}
+
+#[derive(Default)]
+pub struct Cursor {
+    source: Rc<String>,
+    pos: usize,
+}
+
+impl Cursor {
+    pub fn new(source: Rc<String>) -> Self {
+        Self { source, pos: 0 }
+    }
+}
+
+impl Iterator for Cursor {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.source.as_bytes().get(self.pos).map(|u| *u as char);
+        self.pos += 1;
+        item
+    }
+}
+
+impl Cursor {
+    pub fn peek_next(&self) -> Option<char> {
+        self.source.as_bytes().get(self.pos + 1).map(|u| *u as char)
+    }
+
+    pub fn peek_previous(&self) -> Option<char> {
+        if self.pos == 0 || self.source.is_empty() {
+            return None;
+        }
+
+        self.source.as_bytes().get(self.pos - 1).map(|u| *u as char)
+    }
+
+    pub fn step_back(&mut self) {
+        self.pos = self.pos.saturating_sub(1);
+    }
+
+    pub fn step_forward(&mut self) {
+        self.pos = self.pos.saturating_add(1);
+    }
+
+    pub fn advance_word(&mut self) -> String {
+        let start = self.pos;
+
+        while let Some(_) = self.next() {
+            if self.peek_next().is_some_and(|c| !c.is_alphanumeric()) || self.peek_next().is_none()
+            {
+                break;
+            }
+        }
+
+        self.step_forward();
+
+        self.source
+            .get(start..=self.pos)
+            .map_or_else(|| String::new(), |slice| slice.to_string())
+    }
+
+    pub fn read_tag_definition(&mut self) -> String {
+        let start = self.pos;
+
+        while let Some(ch) = self.next() {
+            if ch == '>' {
+                break;
+            }
+        }
+
+        self.source
+            .get(start..self.pos)
+            .map_or_else(|| String::new(), |slice| slice.to_string())
     }
 }
 
