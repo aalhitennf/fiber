@@ -1,9 +1,7 @@
 <root title="Fiber">
     <cols class="Columns">
-        <rows gap=1.0>
+        <rows gap=1>
             <label>everybody is building ships and boats</label>
         </rows>
-    </cols>
-    // This is a comment line
-    <rows gap=2.0 />
+    <rows scale=1.2 />
 </root>

@@ -1,177 +1,284 @@
-use std::{path::Path, rc::Rc};
-
-pub type Result<I> = std::result::Result<I, Box<dyn std::error::Error>>;
-
-pub struct Lexer<'a> {
-    source: Rc<String>,
-    tokens: Vec<Token<'a>>,
-    cursor: Cursor,
+#[derive(Debug, PartialEq)]
+pub struct Token {
+    pub kind: TokenKind,
+    start: usize,
+    end: usize,
 }
 
-#[derive(Debug)]
-pub enum Token<'a> {
-    TagOpen,
-    TagClose,
-    TagCloseSelf,
-    Identifier(String),
-    Equals,
+#[derive(Debug, PartialEq)]
+pub enum TokenKind {
+    TagStart,     // <
+    TagEnd,       // >
+    TagClose,     // </
+    TagSelfClose, // />
+    TagName(String),
     AttributeName(String),
     AttributeValue(String),
-    Comment(String),
-    Char(char),
-    Error(LexerError),
-    Unknown(&'a char),
-    None,
+    Equal,        // =
+    Text(String), // Text content between tags
 }
 
-#[derive(Debug)]
-pub struct LexerError {
-    message: String,
-    source: String,
+#[derive(Debug, Clone, PartialEq)]
+pub enum AttributeValue {
+    String(String),
+    Float(f64),
+    Int(i64),
+}
+
+pub struct Lexer {
+    input: String,
+    position: usize,
     line: usize,
-    col: usize,
+    column: usize,
 }
 
-#[inline]
-fn is_whitespace(c: &'static str) -> bool {
-    c == " " || c == "\n" || c == "\t"
-}
-
-impl<'a> Lexer<'a> {
-    pub fn new_from_path(p: impl AsRef<Path>) -> Result<Self> {
-        let source = std::fs::read_to_string(p.as_ref())?;
-        Self::new(&source)
+impl Lexer {
+    pub fn new(input: String) -> Self {
+        Lexer {
+            input,
+            position: 0,
+            line: 1,
+            column: 1,
+        }
     }
 
-    pub fn new(s: &str) -> Result<Self> {
-        let source = Rc::new(s.trim().to_string());
-        let source_len = source.len();
-        let cursor = Cursor::new(source.clone());
-
-        let lexer = Self {
-            source,
-            tokens: Vec::with_capacity(source_len),
-            cursor,
-        };
-
-        Ok(lexer)
+    fn next_char(&mut self) -> Option<char> {
+        if self.position < self.input.len() {
+            let ch = self.input[self.position..].chars().next().unwrap();
+            self.position += ch.len_utf8();
+            if ch == '\n' {
+                self.line += 1;
+                self.column = 1;
+            } else {
+                self.column += 1;
+            }
+            Some(ch)
+        } else {
+            None
+        }
     }
 
-    pub fn lex(&mut self) {
-        while let Some(ch) = self.cursor.next() {
+    fn peek_char(&self) -> Option<char> {
+        if self.position < self.input.len() {
+            self.input[self.position..].chars().next()
+        } else {
+            None
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        while let Some(ch) = self.peek_char() {
+            if ch.is_whitespace() {
+                self.next_char();
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn lex(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        let mut inside_tag = false;
+
+        while let Some(ch) = self.next_char() {
+            let start_pos = self.position - ch.len_utf8();
             match ch {
                 '<' => {
-                    self.tokens.push(Token::TagOpen);
-
-                    let tag_name = self.cursor.advance_word();
-                    self.tokens.push(Token::Identifier(tag_name));
-
-                    let attrs = self.cursor.read_tag_definition();
-                    self.tokens.push(Token::AttributeName(attrs.to_string()));
-
-                    self.tokens.push(Token::TagClose);
+                    inside_tag = true;
+                    if let Some('/') = self.peek_char() {
+                        self.next_char();
+                        tokens.push(Token {
+                            kind: TokenKind::TagClose,
+                            start: start_pos,
+                            end: self.position,
+                        });
+                    } else {
+                        tokens.push(Token {
+                            kind: TokenKind::TagStart,
+                            start: start_pos,
+                            end: self.position,
+                        });
+                    }
                 }
-
                 '>' => {
-                    self.tokens.push(Token::TagClose);
+                    inside_tag = false;
+
+                    tokens.push(Token {
+                        kind: TokenKind::TagEnd,
+                        start: start_pos,
+                        end: self.position,
+                    })
                 }
-
-                '\n' => {
-                    // line += 1;
-                    // col = 0;
+                '/' => {
+                    if let Some('>') = self.peek_char() {
+                        self.next_char();
+                        tokens.push(Token {
+                            kind: TokenKind::TagSelfClose,
+                            start: start_pos,
+                            end: self.position,
+                        });
+                    }
                 }
+                '=' => tokens.push(Token {
+                    kind: TokenKind::Equal,
+                    start: start_pos,
+                    end: self.position,
+                }),
+                '"' => {
+                    let mut value = String::new();
+                    let value_start_pos = self.position;
+                    while let Some(next_ch) = self.next_char() {
+                        if next_ch == '"' {
+                            break;
+                        }
+                        value.push(next_ch);
+                    }
+                    tokens.push(Token {
+                        kind: TokenKind::AttributeValue(value),
+                        start: value_start_pos - 1, // Include the starting quote
+                        end: self.position,
+                    });
+                }
+                _ => {
+                    if ch.is_alphabetic() {
+                        // if inside_tag {
+                        //     let mut name = String::new();
+                        //     name.push(ch);
+                        //     while let Some(next_ch) = self.peek_char() {
+                        //         if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' {
+                        //             name.push(self.next_char().unwrap());
+                        //         } else {
+                        //             break;
+                        //         }
+                        //     }
+                        //     if let Some('=') = self.peek_char() {
+                        //         tokens.push(Token::AttributeName(name));
+                        //     } else {
+                        //         tokens.push(Token::TagName(name));
+                        //     }
+                        // } else {
+                        //     let mut text = String::new();
+                        //     text.push(ch);
+                        //     while let Some(next_ch) = self.peek_char() {
+                        //         if next_ch == '<' {
+                        //             break;
+                        //         } else {
+                        //             text.push(self.next_char().unwrap());
+                        //         }
+                        //     }
+                        //     tokens.push(Token::Text(text));
+                        // }
+                        if inside_tag {
+                            let mut name = String::new();
+                            name.push(ch);
+                            while let Some(next_ch) = self.peek_char() {
+                                if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' {
+                                    name.push(self.next_char().unwrap());
+                                } else {
+                                    break;
+                                }
+                            }
+                            let end_pos = self.position;
+                            if let Some('=') = self.peek_char() {
+                                tokens.push(Token {
+                                    kind: TokenKind::AttributeName(name),
+                                    start: start_pos,
+                                    end: end_pos,
+                                });
+                            } else {
+                                tokens.push(Token {
+                                    kind: TokenKind::TagName(name),
+                                    start: start_pos,
+                                    end: end_pos,
+                                });
+                            }
+                        } else {
+                            let mut text = String::new();
+                            text.push(ch);
+                            while let Some(next_ch) = self.peek_char() {
+                                if next_ch == '<' {
+                                    break;
+                                } else {
+                                    text.push(self.next_char().unwrap());
+                                }
+                            }
+                            tokens.push(Token {
+                                kind: TokenKind::Text(text),
+                                start: start_pos,
+                                end: self.position,
+                            });
+                        }
+                    } else if ch.is_numeric() || ch == '.' || ch == '-' {
+                        let mut value = String::new();
+                        value.push(ch);
+                        while let Some(next_ch) = self.peek_char() {
+                            if next_ch.is_numeric() || next_ch == '.' {
+                                value.push(self.next_char().unwrap());
+                            } else {
+                                break;
+                            }
+                        }
+                        // if value.contains('.') {
+                        //     if let Ok(f) = value.parse::<f64>() {
+                        //         tokens.push(Token {
+                        //             kind: TokenKind::AttributeValue(AttributeValue::Float(f),
+                        //             start: start_pos,
+                        //             end: self.position,
+                        //         });
+                        //     } else {
+                        //         tokens.push(Token {
+                        //             kind: TokenKind::Error(format!(
+                        //                 "{value} cannot be parser as f64"
+                        //             )),
+                        //             start: start_pos,
+                        //             end: self.position,
+                        //         });
+                        //     }
+                        // } else {
+                        //     if let Ok(i) = value.parse::<i64>() {
+                        //         tokens.push(Token::AttributeValue(AttributeValue::Int(i)));
+                        //     } else {
+                        //         tokens
+                        //             .push(Token::Error(format!("{value} cannot be parser as i64")));
+                        //     }
+                        // };
 
-                other => (),
-                // other => self.tokens.push(Token::Char(other)),
+                        tokens.push(Token {
+                            kind: TokenKind::AttributeValue(value),
+                            start: start_pos,
+                            end: self.position,
+                        });
+                    } else if !ch.is_whitespace() {
+                        let mut text = String::new();
+                        text.push(ch);
+                        while let Some(next_ch) = self.peek_char() {
+                            if next_ch == '<' {
+                                break;
+                            } else {
+                                text.push(self.next_char().unwrap());
+                            }
+                        }
+                        tokens.push(Token {
+                            kind: TokenKind::Text(text),
+                            start: start_pos,
+                            end: self.position,
+                        });
+                    }
+                }
             }
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct Cursor {
-    source: Rc<String>,
-    pos: usize,
-}
-
-impl Cursor {
-    pub fn new(source: Rc<String>) -> Self {
-        Self { source, pos: 0 }
-    }
-}
-
-impl Iterator for Cursor {
-    type Item = char;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = self.source.as_bytes().get(self.pos).map(|u| *u as char);
-        self.pos += 1;
-        item
-    }
-}
-
-impl Cursor {
-    pub fn peek_next(&self) -> Option<char> {
-        self.source.as_bytes().get(self.pos + 1).map(|u| *u as char)
-    }
-
-    pub fn peek_previous(&self) -> Option<char> {
-        if self.pos == 0 || self.source.is_empty() {
-            return None;
+            self.skip_whitespace();
         }
 
-        self.source.as_bytes().get(self.pos - 1).map(|u| *u as char)
-    }
-
-    pub fn step_back(&mut self) {
-        self.pos = self.pos.saturating_sub(1);
-    }
-
-    pub fn step_forward(&mut self) {
-        self.pos = self.pos.saturating_add(1);
-    }
-
-    pub fn advance_word(&mut self) -> String {
-        let start = self.pos;
-
-        while let Some(_) = self.next() {
-            if self.peek_next().is_some_and(|c| !c.is_alphanumeric()) || self.peek_next().is_none()
-            {
-                break;
-            }
-        }
-
-        self.step_forward();
-
-        self.source
-            .get(start..=self.pos)
-            .map_or_else(|| String::new(), |slice| slice.to_string())
-    }
-
-    pub fn read_tag_definition(&mut self) -> String {
-        let start = self.pos;
-
-        while let Some(ch) = self.next() {
-            if ch == '>' {
-                break;
-            }
-        }
-
-        self.source
-            .get(start..self.pos)
-            .map_or_else(|| String::new(), |slice| slice.to_string())
+        tokens
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::Lexer;
+#[test]
+fn lex() {
+    let content = std::fs::read_to_string("./test.fml").unwrap();
+    let mut lexer = Lexer::new(content);
+    let tokens = lexer.lex();
 
-    #[test]
-    fn lex() {
-        let mut lexer = Lexer::new_from_path("./test.fml").unwrap();
-        lexer.lex();
-
-        println!("{:#?}", lexer.tokens);
-    }
+    println!("{:#?}", tokens);
 }
+// }
