@@ -44,29 +44,31 @@ impl Lexer {
     }
 
     fn next_char(&mut self) -> Option<char> {
-        if self.position < self.input.len() {
-            let ch = self.input.chars().nth(self.position)?;
+        // if self.position < self.input.len() {
+        // let ch = self.input.chars().nth(self.position)?;
 
-            // let ch = self.input[self.position..].chars().next().unwrap();
-            self.position += ch.len_utf8();
-            if ch == '\n' {
-                self.line += 1;
-                self.column = 1;
-            } else {
-                self.column += 1;
-            }
-            Some(ch)
+        let ch = self.input[self.position..].chars().next()?;
+
+        self.position += ch.len_utf8();
+
+        if ch == '\n' {
+            self.line += 1;
+            self.column = 1;
         } else {
-            None
+            self.column += 1;
         }
+        Some(ch)
+        // } else {
+        //     None
+        // }
     }
 
     fn peek_char(&self) -> Option<char> {
-        if self.position < self.input.len() {
-            self.input[self.position..].chars().next()
-        } else {
-            None
-        }
+        // if self.position < self.input.len() {
+        self.input[self.position..].chars().next()
+        // } else {
+        // None
+        // }
     }
 
     fn skip_whitespace(&mut self) {
@@ -81,16 +83,20 @@ impl Lexer {
 
     #[allow(clippy::too_many_lines)]
     pub fn lex(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
+        let mut tokens = Vec::with_capacity(self.input.len());
         let mut inside_tag = false;
+        let mut start_pos;
+        let mut value_start_pos;
 
         while let Some(ch) = self.next_char() {
-            let start_pos = self.position - ch.len_utf8();
+            start_pos = self.position - ch.len_utf8();
             match ch {
                 '<' => {
                     inside_tag = true;
+
                     if let Some('/') = self.peek_char() {
                         self.next_char();
+
                         tokens.push(Token {
                             kind: TokenKind::TagClose,
                             start: start_pos,
@@ -116,6 +122,7 @@ impl Lexer {
                 '/' => {
                     if let Some('>') = self.peek_char() {
                         self.next_char();
+
                         tokens.push(Token {
                             kind: TokenKind::TagSelfClose,
                             start: start_pos,
@@ -130,7 +137,7 @@ impl Lexer {
                 }),
                 '"' => {
                     let mut value = String::new();
-                    let value_start_pos = self.position;
+                    value_start_pos = self.position;
 
                     while let Some(next_ch) = self.next_char() {
                         if next_ch == '"' {
@@ -265,6 +272,8 @@ fn lex_simple() {
     let mut lexer = Lexer::new(content);
     let tokens = lexer.lex();
 
+    println!("{} tokens", tokens.len());
+
     assert!(tokens.len() == 40)
 }
 
@@ -274,6 +283,8 @@ fn lex_large() {
     let mut lexer = Lexer::new(content);
     let tokens = lexer.lex();
 
+    println!("{} tokens", tokens.len());
+
     assert!(!tokens.is_empty())
 }
 
@@ -282,6 +293,8 @@ fn lex_xtra_large() {
     let content = std::fs::read_to_string("./xtra_large.fml").unwrap();
     let mut lexer = Lexer::new(content);
     let tokens = lexer.lex();
+
+    println!("{} tokens", tokens.len());
 
     assert!(!tokens.is_empty())
 }
