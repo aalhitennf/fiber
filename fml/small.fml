@@ -1,7 +1,8 @@
 <root title="Fiber">
-    <cols class="Columns">
+    <cols class="columns">
         <rows gap=1>
             <label>everybody is building ships and boats</label>
+            <label>63 62 61 60 59 58</label>
         </rows>
     </cols>
     <rows scale=1.2 />

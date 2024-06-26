@@ -1,9 +1,23 @@
-#[derive(Debug, PartialEq)]
+use std::fmt::Display;
+
+#[derive(Debug)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
-    start: usize,
-    end: usize,
+    pub start: usize,
+    pub end: usize,
+    pub line: usize,
+    pub col: usize,
 }
+
+// impl<'a> Clone for Token<'a> {
+//     fn clone(&self) -> Self {
+//         Token {
+//             kind: self.kind,
+//             start: self.start,
+//             end: self.end,
+//         }
+//     }
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum TokenKind<'a> {
@@ -14,16 +28,27 @@ pub enum TokenKind<'a> {
     TagName(&'a str),
     AttributeName(&'a str),
     AttributeValue(&'a str),
-    Equal,         // =
+    EqualSign,     // =
     Text(&'a str), // Text content between tags
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum AttributeValue {
-//     String(String),
-//     Float(f64),
-//     Int(i64),
-// }
+impl<'a> Display for TokenKind<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let value = match self {
+            TokenKind::TagStart => "<",
+            TokenKind::TagEnd => ">",
+            TokenKind::TagClose => "</",
+            TokenKind::TagSelfClose => "/>",
+            TokenKind::TagName(_) => "Tag name",
+            TokenKind::AttributeName(_) => "Attribute name",
+            TokenKind::AttributeValue(_) => "Attribute value",
+            TokenKind::EqualSign => "=",
+            TokenKind::Text(_) => "TEXT",
+        };
+
+        write!(f, "{value}")
+    }
+}
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -39,36 +64,26 @@ impl<'a> Lexer<'a> {
             input,
             position: 0,
             line: 1,
-            column: 1,
+            column: 0,
         }
     }
 
     fn next_char(&mut self) -> Option<char> {
-        // if self.position < self.input.len() {
-        // let ch = self.input.chars().nth(self.position)?;
-
         let ch = self.input[self.position..].chars().next()?;
 
         self.position += ch.len_utf8();
 
         if ch == '\n' {
             self.line += 1;
-            self.column = 1;
+            self.column = 0;
         } else {
             self.column += 1;
         }
         Some(ch)
-        // } else {
-        //     None
-        // }
     }
 
     fn peek_char(&self) -> Option<char> {
-        // if self.position < self.input.len() {
         self.input[self.position..].chars().next()
-        // } else {
-        // None
-        // }
     }
 
     fn skip_whitespace(&mut self) {
@@ -90,6 +105,7 @@ impl<'a> Lexer<'a> {
 
         while let Some(ch) = self.next_char() {
             start_pos = self.position - ch.len_utf8();
+
             match ch {
                 '<' => {
                     inside_tag = true;
@@ -101,12 +117,16 @@ impl<'a> Lexer<'a> {
                             kind: TokenKind::TagClose,
                             start: start_pos,
                             end: self.position,
+                            line: self.line,
+                            col: self.column,
                         });
                     } else {
                         tokens.push(Token {
                             kind: TokenKind::TagStart,
                             start: start_pos,
                             end: self.position,
+                            line: self.line,
+                            col: self.column,
                         });
                     }
                 }
@@ -117,6 +137,8 @@ impl<'a> Lexer<'a> {
                         kind: TokenKind::TagEnd,
                         start: start_pos,
                         end: self.position,
+                        line: self.line,
+                        col: self.column,
                     });
                 }
                 '/' => {
@@ -127,42 +149,43 @@ impl<'a> Lexer<'a> {
                             kind: TokenKind::TagSelfClose,
                             start: start_pos,
                             end: self.position,
+                            line: self.line,
+                            col: self.column,
                         });
                     }
                 }
                 '=' => tokens.push(Token {
-                    kind: TokenKind::Equal,
+                    kind: TokenKind::EqualSign,
                     start: start_pos,
                     end: self.position,
+                    line: self.line,
+                    col: self.column,
                 }),
-                '"' => {
-                    // let mut value = String::new();
+                '"' if inside_tag => {
                     value_start_pos = self.position;
 
                     while let Some(next_ch) = self.next_char() {
                         if next_ch == '"' {
                             break;
                         }
-                        // value.push(next_ch);
                     }
 
                     tokens.push(Token {
                         kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
-                        start: value_start_pos - 1, // Include the starting quote
+                        start: value_start_pos - 1,
                         end: self.position,
+                        line: self.line,
+                        col: self.column,
                     });
                 }
-                _ => {
-                    if ch.is_alphabetic() {
-                        if inside_tag {
-                            // let mut name = String::new();
-                            // name.push(ch);
 
+                '\n' | '\t' => (),
+
+                _ => {
+                    if inside_tag {
+                        if ch.is_alphabetic() {
                             while let Some(next_ch) = self.peek_char() {
                                 if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' {
-                                    // if let Some(next_char) = self.next_char() {
-                                    // name.push(next_char);
-                                    // }
                                     self.next_char();
                                 } else {
                                     break;
@@ -176,90 +199,62 @@ impl<'a> Lexer<'a> {
                                     kind: TokenKind::AttributeName(&self.input[start_pos..self.position]),
                                     start: start_pos,
                                     end: end_pos,
+                                    line: self.line,
+                                    col: self.column,
                                 });
                             } else {
                                 tokens.push(Token {
                                     kind: TokenKind::TagName(&self.input[start_pos..self.position]),
                                     start: start_pos,
                                     end: end_pos,
+                                    line: self.line,
+                                    col: self.column,
                                 });
                             }
-                        } else {
-                            // let mut text = String::new();
-                            // text.push(ch);
+                        } else if ch.is_numeric() || ch == '.' || ch == '-' {
                             while let Some(next_ch) = self.peek_char() {
-                                if next_ch == '<' {
+                                if next_ch.is_numeric() || next_ch == '.' {
+                                    self.next_char();
+                                } else {
                                     break;
-                                } //else if let Some(next_char) = self.next_char() {
-                                  // text.push(next_char);
-                                  //}
+                                }
+                            }
 
+                            tokens.push(Token {
+                                kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
+                                start: start_pos,
+                                end: self.position,
+                                line: self.line,
+                                col: self.column,
+                            });
+                        } else if !ch.is_whitespace() {
+                            while let Some('<') = self.peek_char() {
                                 self.next_char();
                             }
+
                             tokens.push(Token {
                                 kind: TokenKind::Text(&self.input[start_pos..self.position]),
                                 start: start_pos,
                                 end: self.position,
+                                line: self.line,
+                                col: self.column,
                             });
                         }
-                    } else if ch.is_numeric() || ch == '.' || ch == '-' {
-                        // let mut value = String::new();
-                        // value.push(ch);
-                        while let Some(next_ch) = self.peek_char() {
-                            if next_ch.is_numeric() || next_ch == '.' {
-                                // if let Some(next_char) = self.next_char() {
-                                // value.push(next_char);
-                                // }
-                                self.next_char();
-                            } else {
-                                break;
-                            }
-                        }
-                        // if value.contains('.') {
-                        //     if let Ok(f) = value.parse::<f64>() {
-                        //         tokens.push(Token {
-                        //             kind: TokenKind::AttributeValue(AttributeValue::Float(f),
-                        //             start: start_pos,
-                        //             end: self.position,
-                        //         });
-                        //     } else {
-                        //         tokens.push(Token {
-                        //             kind: TokenKind::Error(format!(
-                        //                 "{value} cannot be parser as f64"
-                        //             )),
-                        //             start: start_pos,
-                        //             end: self.position,
-                        //         });
-                        //     }
-                        // } else {
-                        //     if let Ok(i) = value.parse::<i64>() {
-                        //         tokens.push(Token::AttributeValue(AttributeValue::Int(i)));
-                        //     } else {
-                        //         tokens
-                        //             .push(Token::Error(format!("{value} cannot be parser as i64")));
-                        //     }
-                        // };
-
-                        tokens.push(Token {
-                            kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
-                            start: start_pos,
-                            end: self.position,
-                        });
-                    } else if !ch.is_whitespace() {
-                        // let mut text = String::new();
-                        // text.push(ch);
+                    } else {
                         while let Some(next_ch) = self.peek_char() {
                             if next_ch == '<' {
                                 break;
-                            } // else if let Some(next_char) = self.next_char() {
-                              //  text.push(next_char);
-                              // }
+                            }
+
                             self.next_char();
                         }
+
                         tokens.push(Token {
                             kind: TokenKind::Text(&self.input[start_pos..self.position]),
                             start: start_pos,
                             end: self.position,
+                            line: self.line,
+                            col: self.column,
                         });
                     }
                 }
@@ -272,14 +267,16 @@ impl<'a> Lexer<'a> {
 }
 
 #[test]
-fn lex_simple() {
-    let content = std::fs::read_to_string("./simple.fml").unwrap();
+fn lex_small() {
+    let content = std::fs::read_to_string("./small.fml").unwrap();
     let mut lexer = Lexer::new(&content);
     let tokens = lexer.lex();
 
-    println!("{} tokens", tokens.len());
+    for token in &tokens {
+        println!("{:?}", token);
+    }
 
-    assert!(tokens.len() == 40)
+    assert!(tokens.len() == 47)
 }
 
 #[test]
@@ -290,16 +287,16 @@ fn lex_large() {
 
     println!("{} tokens", tokens.len());
 
-    assert!(tokens.len() == 374398)
+    assert!(tokens.len() == 454270)
 }
 
 #[test]
-fn lex_xtra_large() {
-    let content = std::fs::read_to_string("./xtra_large.fml").unwrap();
+fn lex_huge() {
+    let content = std::fs::read_to_string("./huge.fml").unwrap();
     let mut lexer = Lexer::new(&content);
     let tokens = lexer.lex();
 
     println!("{} tokens", tokens.len());
 
-    assert!(tokens.len() == 6137859)
+    assert!(tokens.len() == 10951859)
 }
