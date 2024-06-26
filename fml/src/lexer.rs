@@ -1,40 +1,40 @@
 #[derive(Debug, PartialEq)]
-pub struct Token {
-    pub kind: TokenKind,
+pub struct Token<'a> {
+    pub kind: TokenKind<'a>,
     start: usize,
     end: usize,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum TokenKind {
+pub enum TokenKind<'a> {
     TagStart,     // <
     TagEnd,       // >
     TagClose,     // </
     TagSelfClose, // />
-    TagName(String),
-    AttributeName(String),
-    AttributeValue(String),
-    Equal,        // =
-    Text(String), // Text content between tags
+    TagName(&'a str),
+    AttributeName(&'a str),
+    AttributeValue(&'a str),
+    Equal,         // =
+    Text(&'a str), // Text content between tags
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum AttributeValue {
-    String(String),
-    Float(f64),
-    Int(i64),
-}
+// #[derive(Debug, Clone, PartialEq)]
+// pub enum AttributeValue {
+//     String(String),
+//     Float(f64),
+//     Int(i64),
+// }
 
-pub struct Lexer {
-    input: String,
+pub struct Lexer<'a> {
+    input: &'a str,
     position: usize,
     line: usize,
     column: usize,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     #[must_use]
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Lexer {
             input,
             position: 0,
@@ -136,18 +136,18 @@ impl Lexer {
                     end: self.position,
                 }),
                 '"' => {
-                    let mut value = String::new();
+                    // let mut value = String::new();
                     value_start_pos = self.position;
 
                     while let Some(next_ch) = self.next_char() {
                         if next_ch == '"' {
                             break;
                         }
-                        value.push(next_ch);
+                        // value.push(next_ch);
                     }
 
                     tokens.push(Token {
-                        kind: TokenKind::AttributeValue(value),
+                        kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
                         start: value_start_pos - 1, // Include the starting quote
                         end: self.position,
                     });
@@ -155,14 +155,15 @@ impl Lexer {
                 _ => {
                     if ch.is_alphabetic() {
                         if inside_tag {
-                            let mut name = String::new();
-                            name.push(ch);
+                            // let mut name = String::new();
+                            // name.push(ch);
 
                             while let Some(next_ch) = self.peek_char() {
                                 if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' {
-                                    if let Some(next_char) = self.next_char() {
-                                        name.push(next_char);
-                                    }
+                                    // if let Some(next_char) = self.next_char() {
+                                    // name.push(next_char);
+                                    // }
+                                    self.next_char();
                                 } else {
                                     break;
                                 }
@@ -172,41 +173,44 @@ impl Lexer {
 
                             if let Some('=') = self.peek_char() {
                                 tokens.push(Token {
-                                    kind: TokenKind::AttributeName(name),
+                                    kind: TokenKind::AttributeName(&self.input[start_pos..self.position]),
                                     start: start_pos,
                                     end: end_pos,
                                 });
                             } else {
                                 tokens.push(Token {
-                                    kind: TokenKind::TagName(name),
+                                    kind: TokenKind::TagName(&self.input[start_pos..self.position]),
                                     start: start_pos,
                                     end: end_pos,
                                 });
                             }
                         } else {
-                            let mut text = String::new();
-                            text.push(ch);
+                            // let mut text = String::new();
+                            // text.push(ch);
                             while let Some(next_ch) = self.peek_char() {
                                 if next_ch == '<' {
                                     break;
-                                } else if let Some(next_char) = self.next_char() {
-                                    text.push(next_char);
-                                }
+                                } //else if let Some(next_char) = self.next_char() {
+                                  // text.push(next_char);
+                                  //}
+
+                                self.next_char();
                             }
                             tokens.push(Token {
-                                kind: TokenKind::Text(text),
+                                kind: TokenKind::Text(&self.input[start_pos..self.position]),
                                 start: start_pos,
                                 end: self.position,
                             });
                         }
                     } else if ch.is_numeric() || ch == '.' || ch == '-' {
-                        let mut value = String::new();
-                        value.push(ch);
+                        // let mut value = String::new();
+                        // value.push(ch);
                         while let Some(next_ch) = self.peek_char() {
                             if next_ch.is_numeric() || next_ch == '.' {
-                                if let Some(next_char) = self.next_char() {
-                                    value.push(next_char);
-                                }
+                                // if let Some(next_char) = self.next_char() {
+                                // value.push(next_char);
+                                // }
+                                self.next_char();
                             } else {
                                 break;
                             }
@@ -237,22 +241,23 @@ impl Lexer {
                         // };
 
                         tokens.push(Token {
-                            kind: TokenKind::AttributeValue(value),
+                            kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
                             start: start_pos,
                             end: self.position,
                         });
                     } else if !ch.is_whitespace() {
-                        let mut text = String::new();
-                        text.push(ch);
+                        // let mut text = String::new();
+                        // text.push(ch);
                         while let Some(next_ch) = self.peek_char() {
                             if next_ch == '<' {
                                 break;
-                            } else if let Some(next_char) = self.next_char() {
-                                text.push(next_char);
-                            }
+                            } // else if let Some(next_char) = self.next_char() {
+                              //  text.push(next_char);
+                              // }
+                            self.next_char();
                         }
                         tokens.push(Token {
-                            kind: TokenKind::Text(text),
+                            kind: TokenKind::Text(&self.input[start_pos..self.position]),
                             start: start_pos,
                             end: self.position,
                         });
@@ -269,7 +274,7 @@ impl Lexer {
 #[test]
 fn lex_simple() {
     let content = std::fs::read_to_string("./simple.fml").unwrap();
-    let mut lexer = Lexer::new(content);
+    let mut lexer = Lexer::new(&content);
     let tokens = lexer.lex();
 
     println!("{} tokens", tokens.len());
@@ -280,21 +285,21 @@ fn lex_simple() {
 #[test]
 fn lex_large() {
     let content = std::fs::read_to_string("./large.fml").unwrap();
-    let mut lexer = Lexer::new(content);
+    let mut lexer = Lexer::new(&content);
     let tokens = lexer.lex();
 
     println!("{} tokens", tokens.len());
 
-    assert!(!tokens.is_empty())
+    assert!(tokens.len() == 374398)
 }
 
 #[test]
 fn lex_xtra_large() {
     let content = std::fs::read_to_string("./xtra_large.fml").unwrap();
-    let mut lexer = Lexer::new(content);
+    let mut lexer = Lexer::new(&content);
     let tokens = lexer.lex();
 
     println!("{} tokens", tokens.len());
 
-    assert!(!tokens.is_empty())
+    assert!(tokens.len() == 6137859)
 }

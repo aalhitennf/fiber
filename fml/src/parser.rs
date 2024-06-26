@@ -204,7 +204,7 @@ mod test {
     fn parser() {
         let input = std::fs::read_to_string("./test.fml").unwrap();
 
-        let mut lexer = Lexer::new(input);
+        let mut lexer = Lexer::new(&input);
         let tokens = lexer.lex();
 
         let mut parser = Parser::new(&tokens);
