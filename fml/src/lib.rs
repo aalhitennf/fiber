@@ -1,2 +1,4 @@
-pub(crate) mod lexer;
-mod parser;
+#![allow(dead_code)]
+
+pub mod lexer;
+pub mod parser;
