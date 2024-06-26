@@ -3,5 +3,6 @@
         <rows gap=1>
             <label>everybody is building ships and boats</label>
         </rows>
+    </cols>
     <rows scale=1.2 />
 </root>
