@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
     pub start: usize,
@@ -9,17 +9,7 @@ pub struct Token<'a> {
     pub col: usize,
 }
 
-// impl<'a> Clone for Token<'a> {
-//     fn clone(&self) -> Self {
-//         Token {
-//             kind: self.kind,
-//             start: self.start,
-//             end: self.end,
-//         }
-//     }
-// }
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind<'a> {
     TagStart,     // <
     TagEnd,       // >
