@@ -276,3 +276,12 @@ fn lex_large() {
 
     assert!(!tokens.is_empty())
 }
+
+#[test]
+fn lex_xtra_large() {
+    let content = std::fs::read_to_string("./xtra_large.fml").unwrap();
+    let mut lexer = Lexer::new(content);
+    let tokens = lexer.lex();
+
+    assert!(!tokens.is_empty())
+}
