@@ -173,9 +173,9 @@ impl<'a> Lexer<'a> {
 
                 _ => {
                     if inside_tag {
-                        if ch.is_alphabetic() {
+                        if ch.is_alphabetic() || ch == '_' || ch == '-' {
                             while let Some(next_ch) = self.peek_char() {
-                                if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' {
+                                if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' || next_ch == '_' {
                                     self.next_char();
                                 } else {
                                     break;
@@ -254,39 +254,4 @@ impl<'a> Lexer<'a> {
 
         tokens
     }
-}
-
-#[test]
-fn lex_small() {
-    let content = std::fs::read_to_string("./small.fml").unwrap();
-    let mut lexer = Lexer::new(&content);
-    let tokens = lexer.lex();
-
-    for token in &tokens {
-        println!("{:?}", token);
-    }
-
-    assert!(tokens.len() == 47)
-}
-
-#[test]
-fn lex_large() {
-    let content = std::fs::read_to_string("./large.fml").unwrap();
-    let mut lexer = Lexer::new(&content);
-    let tokens = lexer.lex();
-
-    println!("{} tokens", tokens.len());
-
-    assert!(tokens.len() == 454270)
-}
-
-#[test]
-fn lex_huge() {
-    let content = std::fs::read_to_string("./huge.fml").unwrap();
-    let mut lexer = Lexer::new(&content);
-    let tokens = lexer.lex();
-
-    println!("{} tokens", tokens.len());
-
-    assert!(tokens.len() == 10951859)
 }

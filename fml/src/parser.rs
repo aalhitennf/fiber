@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
         Ok(attributes)
     }
 
-    fn parse_children(&mut self, parent_name: &'a str) -> Result<Vec<Node<'a>>, String> {
+    fn parse_children(&mut self) -> Result<Vec<Node<'a>>, String> {
         let mut children = Vec::new();
 
         loop {
@@ -124,20 +124,11 @@ impl<'a> Parser<'a> {
         }
 
         self.advance();
-        // let name = if let Some(Token {
-        //     kind: TokenKind::TagName(name),
-        //     ..
-        // }) = self.current_token()
-        // {
-        //     name
-        // } else {
-        //     return Err("Expected TagName".to_string());
-        // };
 
         let name = {
             let token = self.current_token().ok_or("Expected TagName")?;
-            if let TokenKind::TagName(name) = &token.kind {
-                name.clone()
+            if let TokenKind::TagName(name) = token.kind {
+                name
             } else {
                 return Err("Expected TagName".to_string());
             }
@@ -169,9 +160,10 @@ impl<'a> Parser<'a> {
         ) {
             return Err("Expected TagEnd".to_string());
         }
+
         self.advance();
 
-        let children = self.parse_children(name)?;
+        let children = self.parse_children()?;
 
         if !matches!(
             self.current_token(),
@@ -182,6 +174,7 @@ impl<'a> Parser<'a> {
         ) {
             return Err("Expected TagClose".to_string());
         }
+
         self.advance();
 
         if let Some(Token {
@@ -189,15 +182,13 @@ impl<'a> Parser<'a> {
             ..
         }) = self.current_token()
         {
-            if *close_name != name {
-                return Err(format!(
-                    "Mismatched closing tag: expected {}, found {}",
-                    name, close_name
-                ));
+            if close_name != &name {
+                return Err(format!("Mismatched closing tag: expected {name}, found {close_name}"));
             }
         } else {
             return Err("Expected TagName".to_string());
         }
+
         self.advance();
 
         if !matches!(
@@ -209,6 +200,7 @@ impl<'a> Parser<'a> {
         ) {
             return Err("Expected TagEnd".to_string());
         }
+
         self.advance();
 
         Ok(Element {
@@ -218,24 +210,13 @@ impl<'a> Parser<'a> {
         })
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn parse(&mut self) -> Result<Vec<Node<'a>>, String> {
         let mut nodes = Vec::new();
 
         while let Ok(element) = self.parse_element() {
             nodes.push(Node::Element(element));
         }
-
-        // while self.current_token().is_some() {
-        //     if let Some(Token {
-        //         kind: TokenKind::TagStart,
-        //         ..
-        //     }) = self.current_token()
-        //     {
-        //         nodes.push(Node::Element(self.parse_element()?));
-        //     } else {
-        //         self.advance();
-        //     }
-        // }
 
         Ok(nodes)
     }

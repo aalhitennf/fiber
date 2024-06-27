@@ -5,5 +5,11 @@
             <label>63 62 61 60 59 58</label>
         </rows>
     </cols>
-    <rows scale=1.2 />
+
+    <cols>
+        <label-dyn>koira kissa koira</label-dyn>
+        <label_dyn>koira kissa koira</label_dyn>
+    </cols>
+
+    <rows scale=1.2 class="tiger-mafia" />
 </root>
