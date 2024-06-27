@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
     pub start: usize,
@@ -7,7 +7,7 @@ pub struct Token<'a> {
     pub col: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum TokenKind<'a> {
     TagStart,     // <
     TagEnd,       // >
