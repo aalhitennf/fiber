@@ -3,7 +3,29 @@ use crate::lexer::{Token, TokenKind};
 #[derive(Debug)]
 pub struct Attribute<'a> {
     pub name: &'a str,
-    pub value: &'a str,
+    pub value: AttributeValue<'a>,
+}
+
+#[derive(Debug)]
+pub enum AttributeValue<'a> {
+    String(&'a str),
+    Integer(i64),
+    Float(f64),
+}
+
+impl<'a> From<&'a str> for AttributeValue<'a> {
+    #[inline]
+    fn from(input: &'a str) -> AttributeValue {
+        if let Ok(i) = input.parse::<i64>() {
+            return AttributeValue::Integer(i);
+        }
+
+        if let Ok(f) = input.parse::<f64>() {
+            return AttributeValue::Float(f);
+        }
+
+        AttributeValue::String(input)
+    }
 }
 
 #[derive(Debug)]
@@ -70,14 +92,17 @@ impl<'a> Parser<'a> {
         Parser { tokens, position: 0 }
     }
 
+    #[inline]
     fn current_token(&self) -> Option<&Token<'a>> {
         self.tokens.get(self.position)
     }
 
+    #[inline]
     fn advance(&mut self) {
         self.position += 1;
     }
 
+    #[inline]
     fn parse_attributes(&mut self) -> Result<Vec<Attribute<'a>>, String> {
         let mut attributes = Vec::new();
 
@@ -108,7 +133,10 @@ impl<'a> Parser<'a> {
                     };
                     self.advance();
 
-                    attributes.push(Attribute { name: attr_name, value });
+                    attributes.push(Attribute {
+                        name: attr_name,
+                        value: AttributeValue::from(value),
+                    });
                 }
                 _ => break,
             }
@@ -117,6 +145,7 @@ impl<'a> Parser<'a> {
         Ok(attributes)
     }
 
+    #[inline]
     fn parse_children(&mut self) -> Result<Vec<Node<'a>>, String> {
         let mut children = Vec::new();
 
@@ -186,11 +215,6 @@ impl<'a> Parser<'a> {
             self.advance();
 
             return Ok(Element::new(name, attributes, Vec::new()));
-            // return Ok(Element {
-            //     name,
-            //     attributes,
-            //     children: Vec::new(),
-            // });
         }
 
         if !matches!(
@@ -246,11 +270,6 @@ impl<'a> Parser<'a> {
         self.advance();
 
         Ok(Element::new(name, attributes, children))
-        // Ok(Element {
-        // name,
-        // attributes,
-        // children,
-        // })
     }
 
     #[allow(clippy::missing_errors_doc)]

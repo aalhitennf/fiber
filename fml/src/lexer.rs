@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 #[derive(Debug, Clone, Copy)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
@@ -22,24 +20,6 @@ pub enum TokenKind<'a> {
     Text(&'a str), // Text content between tags
 }
 
-impl<'a> Display for TokenKind<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = match self {
-            TokenKind::TagStart => "<",
-            TokenKind::TagEnd => ">",
-            TokenKind::TagClose => "</",
-            TokenKind::TagSelfClose => "/>",
-            TokenKind::TagName(_) => "Tag name",
-            TokenKind::AttributeName(_) => "Attribute name",
-            TokenKind::AttributeValue(_) => "Attribute value",
-            TokenKind::EqualSign => "=",
-            TokenKind::Text(_) => "TEXT",
-        };
-
-        write!(f, "{value}")
-    }
-}
-
 pub struct Lexer<'a> {
     input: &'a str,
     position: usize,
@@ -58,6 +38,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    #[inline]
     fn next_char(&mut self) -> Option<char> {
         let ch = self.input[self.position..].chars().next()?;
 
@@ -72,10 +53,12 @@ impl<'a> Lexer<'a> {
         Some(ch)
     }
 
+    #[inline]
     fn peek_char(&self) -> Option<char> {
         self.input[self.position..].chars().next()
     }
 
+    #[inline]
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.peek_char() {
             if ch.is_whitespace() {
