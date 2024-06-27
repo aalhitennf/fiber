@@ -1,85 +1,12 @@
+mod analyzer;
+mod attr;
+mod element;
+mod error;
+
+pub use attr::{Attribute, AttributeValue};
+pub use element::{Element, ElementKind, Node};
+
 use crate::lexer::{Token, TokenKind};
-
-#[derive(Debug)]
-pub struct Attribute<'a> {
-    pub name: &'a str,
-    pub value: AttributeValue<'a>,
-}
-
-#[derive(Debug)]
-pub enum AttributeValue<'a> {
-    String(&'a str),
-    Integer(i64),
-    Float(f64),
-}
-
-impl<'a> From<&'a str> for AttributeValue<'a> {
-    #[inline]
-    fn from(input: &'a str) -> AttributeValue {
-        if let Ok(i) = input.parse::<i64>() {
-            return AttributeValue::Integer(i);
-        }
-
-        if let Ok(f) = input.parse::<f64>() {
-            return AttributeValue::Float(f);
-        }
-
-        AttributeValue::String(input)
-    }
-}
-
-#[derive(Debug)]
-pub enum Node<'a> {
-    Element(Element<'a>),
-    Text(&'a str),
-}
-
-#[derive(Debug)]
-pub struct Element<'a> {
-    pub kind: ElementKind<'a>,
-    pub attributes: Vec<Attribute<'a>>,
-    pub children: Vec<Node<'a>>,
-}
-
-#[derive(Debug)]
-pub enum ElementKind<'a> {
-    Root,
-    Box,
-    VStack,
-    HStack,
-    Clip,
-    Label,
-    Button,
-    Input,
-    Image,
-    Empty,
-    Custom(&'a str),
-}
-
-impl<'a> Element<'a> {
-    #[must_use]
-    pub fn new(name: &'a str, attributes: Vec<Attribute<'a>>, children: Vec<Node<'a>>) -> Element<'a> {
-        let kind = match name {
-            "root" => ElementKind::Root,
-            "box" => ElementKind::Box,
-            "vstack" => ElementKind::VStack,
-            "hstack" => ElementKind::HStack,
-            "clip" => ElementKind::Clip,
-            "label" => ElementKind::Label,
-            "button" => ElementKind::Button,
-            "input" => ElementKind::Input,
-            "image" => ElementKind::Image,
-            "" => ElementKind::Empty,
-            other => ElementKind::Custom(other),
-        };
-
-        Element {
-            kind,
-            attributes,
-            children,
-        }
-    }
-}
 
 pub struct Parser<'a> {
     tokens: Vec<Token<'a>>,
@@ -88,7 +15,7 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     #[must_use]
-    pub fn new(tokens: Vec<Token<'a>>) -> Self {
+    pub const fn new(tokens: Vec<Token<'a>>) -> Self {
         Parser { tokens, position: 0 }
     }
 
@@ -105,8 +32,13 @@ impl<'a> Parser<'a> {
     #[inline]
     fn parse_attributes(&mut self) -> Result<Vec<Attribute<'a>>, String> {
         let mut attributes = Vec::new();
+        let mut line;
+        let mut col;
 
-        while let Some(token) = self.current_token() {
+        while let Some(token) = self.current_token().as_ref() {
+            line = token.line;
+            col = token.col;
+
             match token.kind {
                 TokenKind::AttributeName(attr_name) => {
                     self.advance();
@@ -135,7 +67,7 @@ impl<'a> Parser<'a> {
 
                     attributes.push(Attribute {
                         name: attr_name,
-                        value: AttributeValue::from(value),
+                        value: AttributeValue::new(value, line, col)?,
                     });
                 }
                 _ => break,
@@ -147,31 +79,27 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn parse_children(&mut self) -> Result<Vec<Node<'a>>, String> {
-        let mut children = Vec::new();
+        let mut children = Vec::with_capacity(20);
 
         loop {
-            match self.current_token() {
-                Some(Token {
-                    kind: TokenKind::TagStart,
-                    ..
-                }) => {
-                    if let Some(Token {
-                        kind: TokenKind::TagClose,
-                        ..
-                    }) = self.tokens.get(self.position + 1)
-                    {
-                        break;
+            if let Some(token) = self.current_token() {
+                match token.kind {
+                    TokenKind::TagStart => {
+                        if let Some(Token {
+                            kind: TokenKind::TagClose,
+                            ..
+                        }) = self.tokens.get(self.position + 1)
+                        {
+                            break;
+                        }
+                        children.push(Node::Element(self.parse_element()?));
                     }
-                    children.push(Node::Element(self.parse_element()?));
+                    TokenKind::Text(text) => {
+                        children.push(Node::Text(text));
+                        self.advance();
+                    }
+                    _ => break,
                 }
-                Some(Token {
-                    kind: TokenKind::Text(text),
-                    ..
-                }) => {
-                    children.push(Node::Text(text));
-                    self.advance();
-                }
-                _ => break,
             }
         }
 

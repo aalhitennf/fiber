@@ -11,5 +11,6 @@
         <label_dyn>koira kissa koira</label_dyn>
     </vstack>
 
-    <input scale=1.2 class="tiger-mafia" />
+    <input scale=1.2 class="tiger 
+    mafia" />
 </root>

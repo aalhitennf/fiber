@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug)]
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
@@ -20,6 +22,21 @@ pub enum TokenKind<'a> {
     Text(&'a str), // Text content between tags
 }
 
+impl<'a> Display for TokenKind<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TokenKind::TagStart => write!(f, "<"),
+            TokenKind::TagEnd => write!(f, ">"),
+            TokenKind::TagClose => write!(f, "</"),
+            TokenKind::TagSelfClose => write!(f, "/>"),
+            TokenKind::TagName(name) => write!(f, "TagName: {}", name),
+            TokenKind::AttributeName(name) => write!(f, "AttributeName: {}", name),
+            TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {}", value),
+            TokenKind::EqualSign => write!(f, "="),
+            TokenKind::Text(text) => write!(f, "Text content between tags: {}", text),
+        }
+    }
+}
 pub struct Lexer<'a> {
     input: &'a str,
     position: usize,

@@ -1,7 +1,5 @@
-use fml::{
-    lexer::Lexer,
-    parser::{Element, Node, Parser},
-};
+use fml::lexer::Lexer;
+use fml::parser::{Element, Node, Parser};
 
 fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
     let spaces = (0..*depth).into_iter().fold(String::new(), |mut s, _| {
@@ -55,7 +53,7 @@ fn lex_and_parse(input: &str, name: &str) -> Result<(), String> {
         iter_ast(ast, &mut buf, &mut depth);
     }
 
-    std::fs::write(format!("./tests/out/{name}.ast"), buf).unwrap();
+    std::fs::write(format!("./tests/data/{name}.ast"), buf).unwrap();
 
     assert!(ast_vec.len() == 1);
 
