@@ -11,7 +11,7 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
 
     match node {
         Node::Element(Element {
-            name,
+            kind,
             attributes,
             children,
         }) => {
@@ -20,10 +20,10 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
                 s
             });
 
-            buf.push_str(&format!("{spaces}{name}"));
+            buf.push_str(&format!("{spaces}{kind:?}"));
 
             if !attrs.is_empty() {
-                buf.push_str(&format!("- {attrs}"));
+                buf.push_str(&format!(" | {attrs}"));
             }
 
             buf.push('\n');

@@ -14,9 +14,49 @@ pub enum Node<'a> {
 
 #[derive(Debug)]
 pub struct Element<'a> {
-    pub name: &'a str,
+    pub kind: ElementKind<'a>,
     pub attributes: Vec<Attribute<'a>>,
     pub children: Vec<Node<'a>>,
+}
+
+#[derive(Debug)]
+pub enum ElementKind<'a> {
+    Root,
+    Box,
+    VStack,
+    HStack,
+    Clip,
+    Label,
+    Button,
+    Input,
+    Image,
+    Empty,
+    Custom(&'a str),
+}
+
+impl<'a> Element<'a> {
+    #[must_use]
+    pub fn new(name: &'a str, attributes: Vec<Attribute<'a>>, children: Vec<Node<'a>>) -> Element<'a> {
+        let kind = match name {
+            "root" => ElementKind::Root,
+            "box" => ElementKind::Box,
+            "vstack" => ElementKind::VStack,
+            "hstack" => ElementKind::HStack,
+            "clip" => ElementKind::Clip,
+            "label" => ElementKind::Label,
+            "button" => ElementKind::Button,
+            "input" => ElementKind::Input,
+            "image" => ElementKind::Image,
+            "" => ElementKind::Empty,
+            other => ElementKind::Custom(other),
+        };
+
+        Element {
+            kind,
+            attributes,
+            children,
+        }
+    }
 }
 
 pub struct Parser<'a> {
@@ -144,11 +184,13 @@ impl<'a> Parser<'a> {
         }) = self.current_token()
         {
             self.advance();
-            return Ok(Element {
-                name,
-                attributes,
-                children: Vec::new(),
-            });
+
+            return Ok(Element::new(name, attributes, Vec::new()));
+            // return Ok(Element {
+            //     name,
+            //     attributes,
+            //     children: Vec::new(),
+            // });
         }
 
         if !matches!(
@@ -203,11 +245,12 @@ impl<'a> Parser<'a> {
 
         self.advance();
 
-        Ok(Element {
-            name,
-            attributes,
-            children,
-        })
+        Ok(Element::new(name, attributes, children))
+        // Ok(Element {
+        // name,
+        // attributes,
+        // children,
+        // })
     }
 
     #[allow(clippy::missing_errors_doc)]

@@ -1,15 +1,15 @@
 <root title="Fiber">
-    <cols class="columns">
-        <rows gap=1>
+    <vstack class="columns">
+        <hstack gap=1>
             <label>everybody is building ships and boats</label>
             <label>63 62 61 60 59 58</label>
-        </rows>
-    </cols>
+        </hstack>
+    </vstack>
 
-    <cols>
+    <vstack>
         <label-dyn>koira kissa koira</label-dyn>
         <label_dyn>koira kissa koira</label_dyn>
-    </cols>
+    </vstack>
 
-    <rows scale=1.2 class="tiger-mafia" />
+    <input scale=1.2 class="tiger-mafia" />
 </root>
