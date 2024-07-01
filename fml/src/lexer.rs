@@ -37,6 +37,7 @@ impl<'a> Display for TokenKind<'a> {
         }
     }
 }
+
 pub struct Lexer<'a> {
     input: &'a str,
     position: usize,
