@@ -1,10 +1,13 @@
 <root title="Fiber">
-    <vstack class="columns">
+    // Kekkerit
+    <vstack class="columns"> // Another comment
         <hstack gap=1>
             <label>everybody is building ships and boats</label>
             <label>63 62 61 60 59 58</label>
         </hstack>
     </vstack>
+
+    <input />
 
     <vstack>
         <label-dyn>koira kissa koira</label-dyn>

@@ -11,7 +11,7 @@ fn lex_and_save(input: &str, name: &'static str) -> usize {
         buf.push_str(&format!("{:?}\n", token.kind));
     }
 
-    std::fs::write(format!("./tests/out/{name}.lex"), buf).unwrap();
+    std::fs::write(format!("./tests/data/{name}.lex"), buf).unwrap();
 
     tokens.len()
 }

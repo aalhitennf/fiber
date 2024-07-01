@@ -18,8 +18,12 @@ pub enum TokenKind<'a> {
     TagName(&'a str),
     AttributeName(&'a str),
     AttributeValue(&'a str),
+    // VariableStart, // {
+    // VariableEnd,   // }
+    // VariableName(&'a str),
     EqualSign,     // =
     Text(&'a str), // Text content between tags
+    LineComment(&'a str),
 }
 
 impl<'a> Display for TokenKind<'a> {
@@ -32,8 +36,12 @@ impl<'a> Display for TokenKind<'a> {
             TokenKind::TagName(name) => write!(f, "TagName: {name}"),
             TokenKind::AttributeName(name) => write!(f, "AttributeName: {name}"),
             TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {value}"),
+            // TokenKind::VariableStart => write!(f, "{{"),
+            // TokenKind::VariableEnd => write!(f, "}}"),
+            // TokenKind::VariableName(name) => write!(f, "{name}"),
             TokenKind::EqualSign => write!(f, "="),
             TokenKind::Text(text) => write!(f, "Text content between tags: {text}"),
+            TokenKind::LineComment(comment) => write!(f, "LineComment: {comment}"),
         }
     }
 }
@@ -132,8 +140,8 @@ impl<'a> Lexer<'a> {
                         col: self.column,
                     });
                 }
-                '/' => {
-                    if let Some('>') = self.peek_char() {
+                '/' => match self.peek_char() {
+                    Some('>') => {
                         self.next_char();
 
                         tokens.push(Token {
@@ -144,14 +152,37 @@ impl<'a> Lexer<'a> {
                             col: self.column,
                         });
                     }
-                }
-                '=' => tokens.push(Token {
+
+                    Some('/') => {
+                        while let Some(next_ch) = self.peek_char() {
+                            if next_ch == '\n' {
+                                tokens.push(Token {
+                                    kind: TokenKind::LineComment(&self.input[start_pos..self.position]),
+                                    start: start_pos,
+                                    end: self.position,
+                                    line: self.line,
+                                    col: self.column,
+                                });
+                                break;
+                            }
+
+                            self.next_char();
+                        }
+                    }
+
+                    None => break,
+                    _ => (),
+                },
+                '=' if inside_tag => tokens.push(Token {
                     kind: TokenKind::EqualSign,
                     start: start_pos,
                     end: self.position,
                     line: self.line,
                     col: self.column,
                 }),
+
+                '{' => if let Some('{') = self.peek_char() {},
+
                 '"' if inside_tag => {
                     value_start_pos = self.position;
 
