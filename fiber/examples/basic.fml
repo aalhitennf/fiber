@@ -1,8 +1,8 @@
 <vstack gap="5px" width="100%">
-    <input width="100%" default=0 placeholder="" value={calc_input} />
+    <input class="numinput" width="100%" default=0 placeholder="" />
 
     <hstack gap="5px">
-        <button class="numbtn" onclick={inc_calc_input 1}>1</button>
+        <button class="numbtn">1</button>
         <button class="numbtn">2</button>
         <button class="numbtn">3</button>
         <button class="numbtn">\/</button>

@@ -8,6 +8,8 @@ pub struct FileObserver {
 }
 
 impl FileObserver {
+    /// # Errors
+    /// Panics if initializing notify watcher fails
     pub fn new(path: &Path, o_tx: Sender<()>, recursive: bool) -> Result<Self, Box<dyn std::error::Error>> {
         let p = path.to_path_buf();
         let mut watcher = notify::recommended_watcher(move |res| match res {

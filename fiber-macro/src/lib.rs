@@ -24,21 +24,22 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
         names,
         parsers,
         props,
-    } = e.variants.iter().filter_map(parse_enum_variant).fold(
-        ParsedVariants::default(),
-        |mut v, p| {
+    } = e
+        .variants
+        .iter()
+        .filter_map(parse_enum_variant)
+        .fold(ParsedVariants::default(), |mut v, p| {
             v.add(p);
             v
-        },
-    );
+        });
 
     quote! {
         impl #impl_generics TryFrom<StyleProperty> for #name #ty_generics #where_clause {
-            type Error = crate::theme::style::parser::StyleError;
-            fn try_from(value: crate::theme::style::parser::StyleProperty) -> Result<Self, Self::Error> {
+            type Error = crate::theme::parser::StyleError;
+            fn try_from(value: crate::theme::parser::StyleProperty) -> Result<Self, Self::Error> {
                 match value.key.as_str() {
                     #( #names => Ok(#name::#idents(#parsers(&value.value)?)), )*
-                    val @ _ => Err(crate::theme::style::parser::StyleError::new("Unknown style key", val)),
+                    val @ _ => Err(crate::theme::parser::StyleError::new("Unknown style key", val)),
                 }
             }
         }

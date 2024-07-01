@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use fml::{
-    Lexer, {Element, Node, Parser},
-};
+use fml::{Element, Lexer, Node, Parser};
 
 fn main() {
     let mut args = std::env::args();

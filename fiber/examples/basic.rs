@@ -1,20 +1,17 @@
 use std::path::{Path, PathBuf};
 
 use crossbeam_channel::Receiver;
-use floem::{
-    ext_event::create_signal_from_channel,
-    keyboard::{Key, Modifiers, NamedKey},
-    reactive::{create_effect, RwSignal},
-    style::Style,
-    views::{dyn_view, text, Decorators},
-    IntoView, View,
-};
+use fiber::theme::Theme;
+use floem::ext_event::create_signal_from_channel;
+use floem::keyboard::{Key, Modifiers, NamedKey};
+use floem::reactive::{create_effect, use_context, RwSignal};
+use floem::style::Style;
+use floem::views::{dyn_view, text, Decorators};
+use floem::{IntoView, View};
 
-use fiber::{
-    c_node_to_view,
-    observer::FileObserver,
-    theme::{theme_provider, ThemeOptions},
-};
+use fiber::c_node_to_view;
+use fiber::observer::FileObserver;
+use fiber::theme::{theme_provider, ThemeOptions};
 use fml::parse;
 use log::LevelFilter;
 
@@ -23,15 +20,20 @@ fn app_view(path: impl AsRef<Path> + 'static, receiver: Receiver<()>) -> impl Vi
 
     let source = RwSignal::new(std::fs::read_to_string(&path).expect("Cannot read source"));
 
-    create_effect(move |_| {
-        if let Some(_) = sig.get() {
-            log::info!("File changed");
+    let theme = use_context::<RwSignal<Theme>>().unwrap();
 
-            match std::fs::read_to_string(&path) {
-                Ok(new_source) => source.set(new_source),
-                Err(e) => source.set(e.to_string()),
-            }
+    create_effect(move |_| {
+        theme.track();
+        sig.get();
+
+        // if let Some(_) = sig.get() {
+        //     log::info!("File changed");
+
+        match std::fs::read_to_string(&path) {
+            Ok(new_source) => source.set(new_source),
+            Err(e) => source.set(e.to_string()),
         }
+        // }
     });
 
     let view = dyn_view(move || {
@@ -68,6 +70,7 @@ fn main() {
 
     let (sender, receiver) = crossbeam_channel::unbounded();
 
+    #[allow(unused)]
     let observer = RwSignal::new(FileObserver::new(&path, sender.clone(), false));
 
     let theme_provider = theme_provider(

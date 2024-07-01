@@ -1,21 +1,20 @@
-#![allow(clippy::module_name_repetitions)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss
+)]
 
 pub mod runtime;
 pub mod theme;
 
-use floem::{
-    peniko::Color,
-    reactive::{use_context, RwSignal},
-    style::Style,
-    unit::{PxPct, PxPctAuto},
-    views::{button, container, h_stack_from_iter, text, text_input, v_stack_from_iter, Decorators},
-    AnyView, IntoView,
-};
+use floem::peniko::Color;
+use floem::reactive::{use_context, RwSignal};
+use floem::style::Style;
+use floem::unit::{PxPct, PxPctAuto};
+use floem::views::{button, container, h_stack_from_iter, text, text_input, v_stack_from_iter, Decorators};
+use floem::{AnyView, IntoView};
 use fml::{Attribute, AttributeValue, Element, ElementKind, Node};
-use theme::{
-    parser::{self, StyleParser, StyleProps},
-    Theme,
-};
+use theme::{parser, Theme};
 
 pub mod observer;
 
@@ -26,18 +25,8 @@ pub fn c_node_to_view(node: &Node) -> AnyView {
     }
 }
 
-// struct OwnedElement {
-//     kind: ElementKind,
-
-// }
-
 fn element_to_anyview(elem: &Element) -> AnyView {
     let children = elem.children.iter().map(c_node_to_view).collect::<Vec<_>>();
-
-    // let owned_attrs = elem.attributes.iter().map(String::new)
-    // let elem_c = elem.clone();
-
-    // let attrs =
 
     let attrs = {
         elem.attributes
@@ -46,12 +35,12 @@ fn element_to_anyview(elem: &Element) -> AnyView {
     };
 
     match &elem.kind {
-        ElementKind::Root => container(children).style(|s| s.size_full()).into_any(),
+        ElementKind::Root => container(children).style(Style::size_full).into_any(),
         ElementKind::Box => container(children).into_any(),
         ElementKind::Text => children.into_any(),
         ElementKind::Button => {
             if let Some(Node::Text(t)) = elem.children.first() {
-                let val = t.to_string();
+                let val = (*t).to_string();
                 button(move || val.clone()).into_any()
             } else {
                 button(|| "Button").into_any()

@@ -11,8 +11,7 @@ use floem::views::{container, Container, Decorators};
 use floem::View;
 
 use crate::observer::FileObserver;
-use crate::theme::style::parser::Selector;
-use crate::theme::style::parser::{StyleBlock, StyleParser};
+use crate::theme::parser::{Selector, StyleBlock, StyleParser};
 use crate::theme::StyleCss;
 
 #[derive(Clone)]

@@ -1,5 +1,4 @@
-use fml::Lexer;
-use fml::{Element, Node, Parser};
+use fml::{Element, Lexer, Node, Parser};
 
 fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
     let spaces = (0..*depth).into_iter().fold(String::new(), |mut s, _| {

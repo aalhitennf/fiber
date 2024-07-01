@@ -188,6 +188,7 @@ impl FromStr for StyleBlock {
     }
 }
 
+/// Very naive css parser
 pub struct StyleParser;
 
 impl StyleParser {
@@ -1056,6 +1057,7 @@ fn parse_rgb(s: impl AsRef<str>) -> Result<Color, StyleError> {
     Err(StyleError::new("Invalid rgb value", s))
 }
 
+#[inline]
 fn parse_rgb_value(s: &str) -> Result<u8, StyleError> {
     if let Some(stripped) = s.strip_suffix('%') {
         stripped
@@ -1067,6 +1069,7 @@ fn parse_rgb_value(s: &str) -> Result<u8, StyleError> {
 }
 
 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+#[inline]
 fn parse_rgb_alpha(s: &str) -> Result<u8, StyleError> {
     s.parse::<f64>().map_or_else(
         |e| Err(StyleError::new(&e, s)),
@@ -1094,6 +1097,7 @@ fn parse_transition(s: impl AsRef<str>) -> Result<(String, Transition), StyleErr
     Ok((key.to_string(), t))
 }
 
+#[inline]
 fn parse_seconds(s: &str) -> Result<f64, StyleError> {
     let Some(stripped) = s.strip_suffix('s') else {
         return Err(StyleError::new("Duration must be given as seconds i.e. 1s or 0.1s", s));
