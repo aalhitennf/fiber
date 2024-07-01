@@ -17,7 +17,16 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     #[must_use]
-    pub const fn new(tokens: Vec<Token<'a>>) -> Self {
+    pub fn new(mut tokens: Vec<Token<'a>>) -> Self {
+        tokens.retain(|t| {
+            !matches!(
+                t,
+                Token {
+                    kind: TokenKind::LineComment(_),
+                    ..
+                }
+            )
+        });
         Parser { tokens, position: 0 }
     }
 
