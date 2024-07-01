@@ -7,7 +7,7 @@ pub struct AnalyzeError {
 }
 
 fn analyze_node(node: &Node, buf: &mut String, depth: &mut usize) {
-    let spaces = (0..*depth).into_iter().fold(String::new(), |mut s, _| {
+    let spaces = (0..*depth).fold(String::new(), |mut s, _| {
         s.push_str("    ");
         s
     });
@@ -43,6 +43,4 @@ fn analyze_node(node: &Node, buf: &mut String, depth: &mut usize) {
     }
 }
 
-pub fn analyze_ast() {
-    
-}
+pub fn analyze_ast() {}

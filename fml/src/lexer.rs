@@ -29,11 +29,11 @@ impl<'a> Display for TokenKind<'a> {
             TokenKind::TagEnd => write!(f, ">"),
             TokenKind::TagClose => write!(f, "</"),
             TokenKind::TagSelfClose => write!(f, "/>"),
-            TokenKind::TagName(name) => write!(f, "TagName: {}", name),
-            TokenKind::AttributeName(name) => write!(f, "AttributeName: {}", name),
-            TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {}", value),
+            TokenKind::TagName(name) => write!(f, "TagName: {name}"),
+            TokenKind::AttributeName(name) => write!(f, "AttributeName: {name}"),
+            TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {value}"),
             TokenKind::EqualSign => write!(f, "="),
-            TokenKind::Text(text) => write!(f, "Text content between tags: {}", text),
+            TokenKind::Text(text) => write!(f, "Text content between tags: {text}"),
         }
     }
 }
@@ -87,7 +87,7 @@ impl<'a> Lexer<'a> {
     }
 
     #[allow(clippy::too_many_lines)]
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(&mut self) -> Vec<Token<'a>> {
         let mut tokens = Vec::with_capacity(self.input.len());
         let mut inside_tag = false;
         let mut start_pos;

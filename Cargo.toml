@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["fiber", "fml"]
+members = ["fiber", "fml", "fmlp", "fiber-macro"]
 
 [workspace.dependencies]
-# floem = { git = "https://github.com/lapce/floem" }
+floem = { git = "https://github.com/lapce/floem.git" }

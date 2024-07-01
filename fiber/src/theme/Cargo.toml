@@ -1,0 +1,13 @@
+[package]
+name = "fiber-theme"
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+floem = { workspace = true }
+fiber-macro = { path = "../fiber-macro" }
+crossbeam-channel = { version = "0.5.12" }
+lazy_static = "1.4.0"
+log = { workspace = true }
+notify = "6.1.1"
+regex = "1.10.4"

@@ -1,14 +1,12 @@
-#[derive(Debug)]
+use std::borrow::Cow;
+
+#[derive(Debug, Clone)]
 pub struct Attribute<'a> {
-    pub name: &'a str,
+    pub name: Cow<'a, str>,
     pub value: AttributeValue<'a>,
 }
 
-pub enum AttributeKind<'a> {
-    Class(&'a str),
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AttributeValue<'a> {
     String { value: &'a str, line: usize, col: usize },
     Integer { value: i64, line: usize, col: usize },

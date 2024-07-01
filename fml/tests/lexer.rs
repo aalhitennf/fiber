@@ -1,4 +1,4 @@
-use fml::lexer::Lexer;
+use fml::Lexer;
 
 #[inline]
 fn lex_and_save(input: &str, name: &'static str) -> usize {

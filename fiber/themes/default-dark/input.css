@@ -1,0 +1,17 @@
+text-input {
+    border: 1px;
+    border-radius: 4px;
+    padding: 8px;
+    border-color: var(--brand-color);
+    background-color: var(--bg-color);
+    box-shadow: 0px 0px 1px var(--brand-color);
+    cursor: text;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+text-input:hover,
+text-input:focus {
+    background-color: var(--bg-color-focus);
+    box-shadow: 0px 0px 2px var(--brand-color-hover);
+}

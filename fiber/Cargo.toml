@@ -7,5 +7,12 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-# floem.workspace = true
+crossbeam-channel = "0.5.13"
+env_logger = "0.11.3"
+floem.workspace = true
 fml = { path = "../fml" }
+fiber-macro = { path = "../fiber-macro" }
+lazy_static = "1.5.0"
+log = "0.4.22"
+notify = "6.1.1"
+regex = "1.10.5"

@@ -1,0 +1,33 @@
+<vstack gap="5px" width="100%">
+    <input width="100%" default=0 placeholder="" value={calc_input} />
+
+    <hstack gap="5px">
+        <button class="numbtn" onclick={inc_calc_input 1}>1</button>
+        <button class="numbtn">2</button>
+        <button class="numbtn">3</button>
+        <button class="numbtn">\/</button>
+    </hstack>
+
+    <hstack gap="5px">
+        <button class="numbtn">4</button>
+        <button class="numbtn">5</button>
+        <button class="numbtn">6</button>
+        <button class="numbtn">*</button>
+    </hstack>
+
+    <hstack gap="5px">
+        <button class="numbtn">7</button>
+        <button class="numbtn">8</button>
+        <button class="numbtn">9</button>
+        <button class="numbtn">-</button>
+    </hstack>
+
+    <hstack gap="5px">
+        <button class="numbtn">0</button>
+        <button class="numbtn">.</button>
+        <button class="numbtn">+/-</button>
+        <button class="numbtn">%</button>
+    </hstack>
+
+    <button>\=</button>
+</vstack>

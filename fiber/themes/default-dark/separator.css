@@ -1,0 +1,15 @@
+separator {
+    background-color: var(--fg-color-disabled);
+}
+
+separator-h {
+    height: 1px;
+    margin-top: var(--spacing-l);
+    margin-bottom: var(--spacing-l);
+}
+
+separator-v {
+    width: 1px;
+    margin-left: var(--spacing-l);
+    margin-right: var(--spacing-l);
+}

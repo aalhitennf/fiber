@@ -3,6 +3,8 @@ mod attr;
 mod element;
 mod error;
 
+use std::borrow::Cow;
+
 pub use attr::{Attribute, AttributeValue};
 pub use element::{Element, ElementKind, Node};
 
@@ -66,7 +68,7 @@ impl<'a> Parser<'a> {
                     self.advance();
 
                     attributes.push(Attribute {
-                        name: attr_name,
+                        name: Cow::Borrowed(attr_name),
                         value: AttributeValue::new(value, line, col)?,
                     });
                 }

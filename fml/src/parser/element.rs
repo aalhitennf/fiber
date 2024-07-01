@@ -1,31 +1,35 @@
+use std::borrow::Cow;
+
 use crate::parser::Attribute;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Node<'a> {
     Element(Element<'a>),
     Text(&'a str),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Element<'a> {
     pub kind: ElementKind<'a>,
     pub attributes: Vec<Attribute<'a>>,
     pub children: Vec<Node<'a>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ElementKind<'a> {
     Root,
     Box,
     VStack,
     HStack,
     Clip,
+    Text,
     Label,
     Button,
     Input,
     Image,
     Empty,
-    Custom(&'a str),
+    // Unknown,
+    Custom(Cow<'a, str>),
 }
 
 impl<'a> Element<'a> {
@@ -37,12 +41,14 @@ impl<'a> Element<'a> {
             b"vstack" => ElementKind::VStack,
             b"hstack" => ElementKind::HStack,
             b"clip" => ElementKind::Clip,
+            b"text" => ElementKind::Text,
             b"label" => ElementKind::Label,
             b"button" => ElementKind::Button,
             b"input" => ElementKind::Input,
             b"image" => ElementKind::Image,
             b"" => ElementKind::Empty,
-            _ => ElementKind::Custom(name),
+            _ => ElementKind::Custom(Cow::Borrowed(name)),
+            // _ => ElementKind::Custom(name),
         };
 
         Element {

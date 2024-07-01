@@ -1,0 +1,107 @@
+button {
+    min-height: 35px;
+    min-width: 80px;
+    padding: var(--spacing-l);
+    justify-content: center;
+    align-items: center;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    color: var(--fg-color);
+    transition: background-color 0.1s;
+    transition: box-shadow 0.1s;
+}
+
+button-normal:disabled,
+button-success:disabled,
+button-warn:disabled,
+button-alert:disabled {
+    border: 0px;
+    background-color: #a2a2a2;
+    cursor: default;
+    box-shadow: none;
+    color: var(--fg-color-disabled);
+}
+
+button-ghost:disabled {
+    color: var(--fg-color-disabled);
+    cursor: default;
+}
+
+button:active {
+    color: var(--fg-color-hover);
+}
+
+button-icon {
+    color: var(--fg-color);
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+}
+
+button-normal {
+    background-color: var(--brand-color);
+}
+
+button-normal:hover {
+    background-color: var(--brand-color-hover);
+    box-shadow: 0px 0px 1px 1px var(--brand-color-hover);
+}
+
+button-normal:active {
+    background-color: var(--brand-color);
+    box-shadow: 0px 0px 1px 1px var(--brand-color);
+}
+
+button-success {
+    background-color: var(--success-color);
+}
+
+button-success:hover {
+    background-color: var(--success-color-hover);
+    box-shadow: 0px 0px 1px 1px var(--success-color-hover);
+}
+
+button-success:active {
+    background-color: var(--success-color);
+    box-shadow: 0px 0px 1px 1px var(--success-color);
+}
+
+button-warn {
+    background-color: var(--warn-color);
+}
+
+button-warn:hover {
+    background-color: var(--warn-color-hover);
+    box-shadow: 0px 0px 1px 1px var(--warn-color-hover);
+}
+
+button-warn:active {
+    background-color: var(--warn-color);
+    box-shadow: 0px 0px 1px 1px var(--warn-color);
+}
+
+button-alert {
+    background-color: var(--alert-color);
+}
+
+button-alert:hover {
+    background-color: var(--alert-color-hover);
+    box-shadow: 0px 0px 1px 1px var(--alert-color-hover);
+}
+
+button-alert:active {
+    background-color: var(--alert-color);
+    box-shadow: 0px 0px 1px 1px var(--alert-color);
+}
+
+button-ghost {
+    color: var(--fg-color);
+}
+
+button-ghost:hover {
+    color: var(--fg-color-hover);
+}
+
+button-ghost-icon {
+    color: var(--fg-color);
+}
