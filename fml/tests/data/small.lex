@@ -53,6 +53,8 @@ AttributeName("onclick")
 EqualSign
 Variable("fn:on_btn_click")
 TagEnd
+Text("Click this ")
+Variable("button_value")
 TagClose
 TagName("button")
 TagEnd

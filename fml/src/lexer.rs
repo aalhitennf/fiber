@@ -274,7 +274,7 @@ impl<'a> Lexer<'a> {
                         }
                     } else {
                         while let Some(next_ch) = self.peek_char() {
-                            if next_ch == '<' {
+                            if next_ch == '<' || next_ch == '{' {
                                 break;
                             }
 

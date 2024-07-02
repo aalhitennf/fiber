@@ -8,7 +8,9 @@
     </vstack>
 
     <input value={str:input_value} onenter={fn:input_on_enter} />
-    <button onclick={fn:on_btn_click} ></button>
+    <button onclick={fn:on_btn_click}>
+        Click this {button_value}
+    </button>
 
     <vstack>
         <label-dyn>koira kissa koira</label-dyn>
