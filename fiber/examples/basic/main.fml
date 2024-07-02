@@ -1,0 +1,35 @@
+<root>
+    <vstack gap="5px" width="100%">
+        <input class="numinput" width="100%" />
+
+        <hstack gap="5px">
+            <button class="numbtn">1</button>
+            <button class="numbtn">2</button>
+            <button class="numbtn">3</button>
+            <button class="numbtn">Div</button>
+        </hstack>
+
+        <hstack gap="5px">
+            <button class="numbtn">4</button>
+            <button class="numbtn">5</button>
+            <button class="numbtn">6</button>
+            <button class="numbtn">*</button>
+        </hstack>
+
+        <hstack gap="5px">
+            <button class="numbtn">7</button>
+            <button class="numbtn">8</button>
+            <button class="numbtn">9</button>
+            <button class="numbtn">-</button>
+        </hstack>
+
+        <hstack gap="5px">
+            <button class="numbtn">0</button>
+            <button class="numbtn">.</button>
+            <button class="numbtn">+/-</button>
+            <button class="numbtn">%</button>
+        </hstack>
+
+        <button>kekeke</button>
+    </vstack>
+</root>

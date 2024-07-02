@@ -7,10 +7,36 @@ pub struct Attribute<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct VariableName<'a>(&'a str);
+
+impl<'a> From<&'a str> for VariableName<'a> {
+    fn from(value: &'a str) -> Self {
+        VariableName(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum AttributeValue<'a> {
-    String { value: &'a str, line: usize, col: usize },
-    Integer { value: i64, line: usize, col: usize },
-    Float { value: f64, line: usize, col: usize },
+    String {
+        value: &'a str,
+        line: usize,
+        col: usize,
+    },
+    Integer {
+        value: i64,
+        line: usize,
+        col: usize,
+    },
+    Float {
+        value: f64,
+        line: usize,
+        col: usize,
+    },
+    Variable {
+        name: VariableName<'a>,
+        line: usize,
+        col: usize,
+    },
 }
 
 impl<'a> AttributeValue<'a> {

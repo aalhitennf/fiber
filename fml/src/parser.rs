@@ -1,4 +1,4 @@
-mod analyzer;
+// mod analyzer;
 mod attr;
 mod element;
 mod error;
@@ -61,18 +61,23 @@ impl<'a> Parser<'a> {
                             ..
                         })
                     ) {
-                        return Err("Expected Equal (=)".to_string());
+                        return Err(format!("Expected Equal (=): Line {} Col {}", line, col));
                     }
                     self.advance();
 
                     let value = if let Some(token) = self.current_token() {
-                        if let TokenKind::AttributeValue(attr_value) = token.kind {
-                            attr_value
-                        } else {
-                            return Err("Expected AttributeValue".to_string());
+                        match token.kind {
+                            TokenKind::AttributeValue(attr_value) => attr_value,
+                            TokenKind::Variable(var_value) => var_value,
+                            _ => return Err(format!("Expected AttributeValue or Variable: Line {line}, Col {col}")),
                         }
+                        // if let TokenKind::AttributeValue(attr_value) = token.kind {
+                        //     attr_value
+                        // } else {
+                        //     return Err("Expected AttributeValue".to_string());
+                        // }
                     } else {
-                        return Err("Expected AttributeValue".to_string());
+                        return Err(format!("Expected AttributeValue: Line {line} Col {col}"));
                     };
                     self.advance();
 
@@ -92,49 +97,57 @@ impl<'a> Parser<'a> {
     fn parse_children(&mut self) -> Result<Vec<Node<'a>>, String> {
         let mut children = Vec::with_capacity(20);
 
-        loop {
-            if let Some(token) = self.current_token() {
-                match token.kind {
-                    TokenKind::TagStart => {
-                        if let Some(Token {
-                            kind: TokenKind::TagClose,
-                            ..
-                        }) = self.tokens.get(self.position + 1)
-                        {
-                            break;
-                        }
-                        children.push(Node::Element(self.parse_element()?));
+        // loop {
+        while let Some(token) = self.current_token() {
+            match token.kind {
+                TokenKind::TagStart => {
+                    if let Some(Token {
+                        kind: TokenKind::TagClose,
+                        ..
+                    }) = self.tokens.get(self.position + 1)
+                    {
+                        break;
                     }
-                    TokenKind::Text(text) => {
-                        children.push(Node::Text(text));
-                        self.advance();
-                    }
-                    _ => break,
+                    children.push(Node::Element(self.parse_element()?));
                 }
+                TokenKind::Text(text) => {
+                    children.push(Node::Text(text));
+                    self.advance();
+                }
+                TokenKind::Variable(name) => {
+                    println!("skipvar {name}");
+                    children.push(Node::Text(name));
+                    self.advance();
+                }
+                _ => break,
             }
         }
+        // }
 
         Ok(children)
     }
 
     #[allow(clippy::too_many_lines)]
+    #[inline]
     fn parse_element(&mut self) -> Result<Element<'a>, String> {
         {
+            let token = self.current_token().ok_or("EOF: Expected TagStart")?;
+
             if !matches!(
-                self.current_token(),
-                Some(Token {
+                token,
+                Token {
                     kind: TokenKind::TagStart,
                     ..
-                })
+                }
             ) {
-                return Err("Expected TagStart".to_string());
+                return Err(format!("Expected TagStart: Line {} Col {}", token.line, token.col));
             }
         }
 
         self.advance();
 
         let name = {
-            let token = self.current_token().ok_or("Expected TagName")?;
+            let token = self.current_token().ok_or("EOF: Expected TagName")?;
             if let TokenKind::TagName(name) = token.kind {
                 name
             } else {
@@ -156,29 +169,48 @@ impl<'a> Parser<'a> {
             return Ok(Element::new(name, attributes, Vec::new()));
         }
 
-        if !matches!(
-            self.current_token(),
-            Some(Token {
-                kind: TokenKind::TagEnd,
-                ..
-            })
-        ) {
-            return Err("Expected TagEnd".to_string());
+        // TagEnd
+        {
+            let token = self.current_token().ok_or("EOF: Expected TagName")?;
+
+            if !matches!(
+                token,
+                Token {
+                    kind: TokenKind::TagEnd,
+                    ..
+                }
+            ) {
+                return Err(format!("Expected TagEnd: Line {} Col {}", token.line, token.col));
+            }
         }
 
         self.advance();
 
         let children = self.parse_children()?;
 
-        if !matches!(
-            self.current_token(),
-            Some(Token {
-                kind: TokenKind::TagClose,
-                ..
-            })
-        ) {
-            return Err("Expected TagClose".to_string());
+        {
+            let token = self.current_token().ok_or_else(|| "Unexpected EOF".to_string())?;
+
+            if !matches!(
+                token,
+                Token {
+                    kind: TokenKind::TagClose,
+                    ..
+                }
+            ) {
+                return Err(format!("Expected TagClose: Line {} Col {}", token.line, token.col));
+            }
         }
+
+        // if !matches!(
+        //     self.current_token(),
+        //     Some(Token {
+        //         kind: TokenKind::TagClose,
+        //         ..
+        //     })
+        // ) {
+        //     return Err(format!("Expected TagClose: Line {} Col {}", tok));
+        // }
 
         self.advance();
 
@@ -196,14 +228,18 @@ impl<'a> Parser<'a> {
 
         self.advance();
 
-        if !matches!(
-            self.current_token(),
-            Some(Token {
-                kind: TokenKind::TagEnd,
-                ..
-            })
-        ) {
-            return Err("Expected TagEnd".to_string());
+        {
+            let token = self.current_token().ok_or_else(|| "Unexpected EOF".to_string())?;
+
+            if !matches!(
+                token,
+                Token {
+                    kind: TokenKind::TagEnd,
+                    ..
+                }
+            ) {
+                return Err(format!("Expected TagEnd: Line {} Col {}", token.line, token.col));
+            }
         }
 
         self.advance();
@@ -213,11 +249,23 @@ impl<'a> Parser<'a> {
 
     #[allow(clippy::missing_errors_doc)]
     pub fn parse(&mut self) -> Result<Vec<Node<'a>>, String> {
-        let mut nodes = Vec::new();
+        let mut nodes = Vec::with_capacity(1);
 
-        while let Ok(element) = self.parse_element() {
-            nodes.push(Node::Element(element));
+        loop {
+            match self.parse_element() {
+                Ok(element) => nodes.push(Node::Element(element)),
+                Err(e) => {
+                    if e.as_str() != "EOF" {
+                        eprintln!("{e}");
+                    }
+                    break;
+                }
+            }
         }
+
+        // while let Ok(element) = self.parse_element() {
+        //     nodes.push(Node::Element(element));
+        // }
 
         Ok(nodes)
     }

@@ -28,7 +28,6 @@ pub enum ElementKind<'a> {
     Input,
     Image,
     Empty,
-    // Unknown,
     Custom(Cow<'a, str>),
 }
 

@@ -22,6 +22,7 @@ pub enum TokenKind<'a> {
     EqualSign,     // =
     Text(&'a str), // Text content between tags
     LineComment(&'a str),
+    // EOF,
 }
 
 impl<'a> Display for TokenKind<'a> {
@@ -38,6 +39,7 @@ impl<'a> Display for TokenKind<'a> {
             TokenKind::EqualSign => write!(f, "="),
             TokenKind::Text(text) => write!(f, "Text content between tags: {text}"),
             TokenKind::LineComment(comment) => write!(f, "LineComment: {comment}"),
+            // TokenKind::EOF => write!(f, "EOF"),
         }
     }
 }
@@ -278,11 +280,16 @@ impl<'a> Lexer<'a> {
                                 break;
                             }
 
+                            // Escape the escape
+                            if next_ch == '\\' {
+                                self.next_char();
+                            }
+
                             self.next_char();
                         }
 
                         tokens.push(Token {
-                            kind: TokenKind::Text(&self.input[start_pos..self.position]),
+                            kind: TokenKind::Text(&self.input[start_pos..self.position].trim()),
                             start: start_pos,
                             end: self.position,
                             line: self.line,
@@ -293,6 +300,14 @@ impl<'a> Lexer<'a> {
             }
             self.skip_whitespace();
         }
+
+        // tokens.push(Token {
+        //     kind: TokenKind::EOF,
+        //     start: self.position,
+        //     end: self.position,
+        //     line: self.line,
+        //     col: self.column,
+        // });
 
         tokens
     }
