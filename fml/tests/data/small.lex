@@ -4,7 +4,7 @@ AttributeName("title")
 EqualSign
 AttributeValue("\"Fiber\"")
 TagEnd
-LineComment("// Kekkerit")
+LineComment("// First comment")
 TagStart
 TagName("vstack")
 AttributeName("class")
@@ -40,7 +40,22 @@ TagName("vstack")
 TagEnd
 TagStart
 TagName("input")
+AttributeName("value")
+EqualSign
+Variable("str:input_value")
+AttributeName("onenter")
+EqualSign
+Variable("fn:input_on_enter")
 TagSelfClose
+TagStart
+TagName("button")
+AttributeName("onclick")
+EqualSign
+Variable("fn:on_btn_click")
+TagEnd
+TagClose
+TagName("button")
+TagEnd
 TagStart
 TagName("vstack")
 TagEnd

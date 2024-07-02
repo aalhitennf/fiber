@@ -18,9 +18,7 @@ pub enum TokenKind<'a> {
     TagName(&'a str),
     AttributeName(&'a str),
     AttributeValue(&'a str),
-    // VariableStart, // {
-    // VariableEnd,   // }
-    // VariableName(&'a str),
+    Variable(&'a str),
     EqualSign,     // =
     Text(&'a str), // Text content between tags
     LineComment(&'a str),
@@ -36,9 +34,7 @@ impl<'a> Display for TokenKind<'a> {
             TokenKind::TagName(name) => write!(f, "TagName: {name}"),
             TokenKind::AttributeName(name) => write!(f, "AttributeName: {name}"),
             TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {value}"),
-            // TokenKind::VariableStart => write!(f, "{{"),
-            // TokenKind::VariableEnd => write!(f, "}}"),
-            // TokenKind::VariableName(name) => write!(f, "{name}"),
+            TokenKind::Variable(name) => write!(f, "Variable: {name}"),
             TokenKind::EqualSign => write!(f, "="),
             TokenKind::Text(text) => write!(f, "Text content between tags: {text}"),
             TokenKind::LineComment(comment) => write!(f, "LineComment: {comment}"),
@@ -181,7 +177,21 @@ impl<'a> Lexer<'a> {
                     col: self.column,
                 }),
 
-                '{' => if let Some('{') = self.peek_char() {},
+                '{' => {
+                    while let Some(next_ch) = self.next_char() {
+                        if next_ch == '}' {
+                            break;
+                        }
+                    }
+
+                    tokens.push(Token {
+                        kind: TokenKind::Variable(&self.input[(start_pos + 1)..(self.position - 1)]),
+                        start: start_pos,
+                        end: self.position,
+                        line: self.line,
+                        col: self.column,
+                    })
+                }
 
                 '"' if inside_tag => {
                     value_start_pos = self.position;
