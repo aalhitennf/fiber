@@ -1,4 +1,7 @@
-use std::{path::Path, rc::Rc};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use crossbeam_channel::Sender;
 
@@ -8,6 +11,7 @@ use crate::observer::FileObserver;
 pub struct Runtime {
     _observer: Rc<FileObserver>,
     source: String,
+    path: PathBuf,
 }
 
 impl Runtime {
@@ -20,11 +24,17 @@ impl Runtime {
         Ok(Runtime {
             _observer: Rc::new(observer),
             source,
+            path: path.to_path_buf(),
         })
     }
 
-    pub fn update_source(&mut self, new_source: String) {
-        self.source = new_source;
+    pub fn update_source(&mut self) {
+        match std::fs::read_to_string(&self.path.join("main.fml")) {
+            Ok(new_source) => self.source = new_source,
+            Err(e) => {
+                log::error!("{e}");
+            }
+        }
     }
 
     pub fn source(&self) -> &String {

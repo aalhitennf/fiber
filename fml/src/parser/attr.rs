@@ -9,6 +9,12 @@ pub struct Attribute<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct VariableName<'a>(&'a str);
 
+impl<'a> ToString for VariableName<'a> {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 impl<'a> From<&'a str> for VariableName<'a> {
     fn from(value: &'a str) -> Self {
         VariableName(value)
@@ -37,6 +43,17 @@ pub enum AttributeValue<'a> {
         line: usize,
         col: usize,
     },
+}
+
+impl<'a> ToString for AttributeValue<'a> {
+    fn to_string(&self) -> String {
+        match self {
+            AttributeValue::String { value, .. } => value.to_string(),
+            AttributeValue::Integer { value, .. } => value.to_string(),
+            AttributeValue::Float { value, .. } => value.to_string(),
+            AttributeValue::Variable { name, .. } => name.to_string(),
+        }
+    }
 }
 
 impl<'a> AttributeValue<'a> {

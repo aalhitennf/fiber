@@ -17,7 +17,7 @@ use crate::theme::StyleCss;
 #[derive(Clone)]
 pub struct Theme {
     path: PathBuf,
-    channel: (Sender<()>, Receiver<()>),
+    pub(crate) channel: (Sender<()>, Receiver<()>),
     map: HashMap<String, Style>,
     _observer: Rc<FileObserver>,
 }

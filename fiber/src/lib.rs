@@ -8,16 +8,17 @@ pub mod runtime;
 pub mod state;
 pub mod theme;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crossbeam_channel::Receiver;
 use floem::ext_event::create_signal_from_channel;
 use floem::keyboard::{Key, Modifiers, NamedKey};
 use floem::peniko::Color;
 use floem::reactive::{create_effect, provide_context, use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
-use floem::views::{button, container, dyn_view, h_stack_from_iter, text, text_input, v_stack_from_iter, Decorators};
+use floem::views::{
+    button, container, dyn_view, empty, h_stack_from_iter, text, text_input, v_stack_from_iter, Decorators,
+};
 use floem::{AnyView, IntoView, View};
 use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node};
 use log::LevelFilter;
@@ -26,33 +27,6 @@ use state::State;
 use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 
 pub mod observer;
-
-fn app_view(path: PathBuf, receiver: Receiver<()>) -> impl View {
-    let sig = create_signal_from_channel(receiver);
-
-    let source = RwSignal::new(std::fs::read_to_string(&path).expect("Cannot read source"));
-
-    create_effect(move |_| {
-        sig.get();
-
-        match std::fs::read_to_string(&path) {
-            Ok(new_source) => source.set(new_source),
-            Err(e) => source.set(e.to_string()),
-        }
-    });
-
-    let view = dyn_view(move || {
-        source.with(|s| match parse(&s) {
-            Ok(node) => c_node_to_view(&node),
-            Err(e) => text(e).into_any(),
-        })
-    })
-    .style(Style::size_full)
-    .keyboard_navigatable();
-
-    let id = view.id();
-    view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| id.inspect())
-}
 
 pub fn create_app(entrypoint: impl AsRef<Path>, logging: bool) {
     let path = entrypoint.as_ref().canonicalize().expect("Invalid path");
@@ -79,87 +53,127 @@ pub fn create_app(entrypoint: impl AsRef<Path>, logging: bool) {
     let theme = RwSignal::new(Theme::from_path(&path).expect("Invalid theme path"));
 
     let runtime_event_sig = create_signal_from_channel(receiver.clone());
-    // let theme_event_sig = create_signal_from_channel(receiver);
+    let theme_event_sig = create_signal_from_channel(theme.get_untracked().channel.1);
 
     provide_context(runtime);
     provide_context(state);
     provide_context(theme);
 
-    let ef_path = path.clone();
     create_effect(move |_| {
-        state.track();
-        // theme.track();
-        runtime_event_sig.with(|_| ());
-        // theme_event_sig.with(|_| ());
-
-        match std::fs::read_to_string(ef_path.clone()) {
-            Ok(new_source) => runtime.update(|rt| rt.update_source(new_source)),
-            Err(e) => runtime.update(|rt| rt.update_source(e.to_string())),
+        if let Some(_) = runtime_event_sig.get() {
+            runtime.update(Runtime::update_source);
+            log::info!("Sources reloaded");
         }
-
-        theme.update(Theme::reload);
-
-        log::info!("Sources reloaded");
     });
 
-    // let root_view =
-    //     dyn_view(move || runtime.with(|rt| container(build_view(rt.source())).css(&["body"]).debug_name("Body")));
+    create_effect(move |_| {
+        if let Some(_) = theme_event_sig.get() {
+            theme.update(Theme::reload);
+            log::info!("Css reloaded");
+        }
+    });
 
-    let theme_path = path.clone().join("styles");
     let theme_provider = theme_provider(
         move || {
-            dyn_view(move || runtime.with(|rt| container(build_view(rt.source())).css(&["body"]).debug_name("Body")))
+            dyn_view(move || {
+                let source = runtime.with(|rt| rt.source().to_string());
+                let state = use_context::<RwSignal<State>>().unwrap();
+
+                let mut view = empty().into_any();
+                let view_ref = &mut view;
+                state.update(move |s| *view_ref = build_view(&source, s).into_any());
+                view
+            })
+            .css(&["body"])
+            .debug_name("Body")
         },
-        ThemeOptions::with_path(theme_path),
+        ThemeOptions::with_path(path.join("styles")),
     );
 
     floem::launch(|| theme_provider);
 }
 
-fn build_view(source: &str) -> impl View {
+fn build_view(source: &str, state: &mut State) -> impl View {
+    let start = std::time::SystemTime::now();
+
     let view = match parse(&source) {
-        Ok(node) => c_node_to_view(&node),
+        Ok(node) => c_node_to_view(&node, state),
         Err(e) => text(e).into_any(),
     }
     .style(Style::size_full)
     .keyboard_navigatable();
 
+    let end = start.elapsed().unwrap();
+    log::info!("View built in {}ms", end.as_millis());
+
     let id = view.id();
     view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| id.inspect())
 }
 
-pub fn c_node_to_view(node: &Node) -> AnyView {
+pub fn c_node_to_view(node: &Node, state: &mut State) -> AnyView {
     match node {
         Node::Text(t) => text(t).into_any(),
-        Node::Element(elem) => element_to_anyview(elem),
+        Node::Element(elem) => element_to_anyview(elem, state),
     }
 }
 
-fn element_to_anyview(elem: &Element) -> AnyView {
-    let children = elem.children.iter().map(c_node_to_view).collect::<Vec<_>>();
+// Crashing because net
+fn element_to_anyview(elem: &Element, state: &mut State) -> AnyView {
+    let value_key = format!("value_{}", elem.id);
 
-    let attrs = {
-        elem.attributes
-            .iter()
-            .fold(Style::new(), |s, attr| attr_to_style(attr, s))
-    };
+    let children = elem
+        .children
+        .iter()
+        .map(|n| c_node_to_view(n, state))
+        .collect::<Vec<_>>();
+
+    let attrs = elem
+        .attributes
+        .iter()
+        .fold(Style::new(), |s, attr| attr_to_style(attr, s));
+
+    if let Some(value) = elem.get_attr("value") {
+        state.set_var(value_key.clone(), value.to_string());
+    }
 
     match &elem.kind {
         ElementKind::Root => container(children).style(Style::size_full).into_any(),
         ElementKind::Box => container(children).into_any(),
         ElementKind::Text => children.into_any(),
         ElementKind::Button => {
-            if let Some(Node::Text(t)) = elem.children.first() {
+            let button = if let Some(Node::Text(t)) = elem.children.first() {
                 let val = (*t).to_string();
                 button(move || val.clone()).into_any()
             } else {
                 button(|| "Button").into_any()
+            };
+
+            if let Some(value) = elem.get_attr("onclick") {
+                match state.get_fn(&value.to_string()) {
+                    Some(onclick_fn) => {
+                        return button.on_click_cont(move |_| {
+                            log::info!("FOUND FN");
+                            onclick_fn();
+                        });
+                    }
+                    None => {
+                        return button.on_click_stop(|_| {
+                            log::warn!("NO FN :(:/");
+                        });
+                    }
+                }
+            } else {
+                log::error!("NO ONCLICK ATTR");
             }
+
+            button.css(&["button"])
         }
         ElementKind::HStack => h_stack_from_iter(children).into_any(),
         ElementKind::VStack => v_stack_from_iter(children).into_any(),
         ElementKind::Input => {
-            let buffer = RwSignal::new(String::new());
+            let value = state.get_var(&value_key).map(|v| v.to_string()).unwrap_or_default();
+            let buffer = RwSignal::new(value);
+
             text_input(buffer).into_any()
         }
         _ => text("other").into_any(),

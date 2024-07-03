@@ -813,6 +813,7 @@ dependencies = [
  "lazy_static",
  "log",
  "notify",
+ "parking_lot",
  "regex",
  "xxhash-rust",
 ]

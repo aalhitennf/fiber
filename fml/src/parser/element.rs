@@ -1,6 +1,10 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    fmt::Display,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
-use crate::parser::Attribute;
+use crate::{parser::Attribute, AttributeValue};
 
 #[derive(Debug, Clone)]
 pub enum Node<'a> {
@@ -8,8 +12,25 @@ pub enum Node<'a> {
     Text(&'a str),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ElementId(u64);
+
+impl ElementId {
+    pub fn next() -> Self {
+        static ELEMENT_ID: AtomicU64 = AtomicU64::new(0);
+        ElementId(ELEMENT_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+impl Display for ElementId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Element<'a> {
+    pub id: ElementId,
     pub kind: ElementKind<'a>,
     pub attributes: Vec<Attribute<'a>>,
     pub children: Vec<Node<'a>>,
@@ -33,7 +54,7 @@ pub enum ElementKind<'a> {
 
 impl<'a> Element<'a> {
     #[must_use]
-    pub const fn new(name: &'a str, attributes: Vec<Attribute<'a>>, children: Vec<Node<'a>>) -> Element<'a> {
+    pub fn new(name: &'a str, attributes: Vec<Attribute<'a>>, children: Vec<Node<'a>>) -> Element<'a> {
         let kind = match name.as_bytes() {
             b"root" => ElementKind::Root,
             b"box" => ElementKind::Box,
@@ -51,9 +72,14 @@ impl<'a> Element<'a> {
         };
 
         Element {
+            id: ElementId::next(),
             kind,
             attributes,
             children,
         }
+    }
+
+    pub fn get_attr(&self, name: &str) -> Option<AttributeValue<'_>> {
+        self.attributes.iter().find(|a| a.name == name).map(|a| a.value)
     }
 }

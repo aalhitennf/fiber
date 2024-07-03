@@ -45,6 +45,7 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
 
     match node {
         Node::Element(Element {
+            id: _,
             kind,
             attributes,
             children,

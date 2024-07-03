@@ -1,47 +1,68 @@
-use std::{any::Any, borrow::Cow, cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
+use floem::reactive::{use_context, RwSignal};
 use xxhash_rust::xxh64::Xxh64Builder;
 
 #[derive(Clone)]
-pub struct State<'a> {
-    vars: Rc<RefCell<HashMap<Cow<'a, str>, Box<dyn Any>, Xxh64Builder>>>,
+pub struct State {
+    vars: HashMap<String, String, Xxh64Builder>,
+    // vars: Rc<RefCell<HashMap<String, String, Xxh64Builder>>>,
+    fns: HashMap<String, FnWrap, Xxh64Builder>,
+    // fns: Rc<RefCell<HashMap<String, FnWrap, Xxh64Builder>>>,
 }
 
-impl<'a> State<'a> {
+fn print_state() {
+    let state = use_context::<RwSignal<State>>().unwrap();
+    state.with_untracked(|s| {
+        log::info!("State status");
+        log::info!("Vars: {}", s.vars.len());
+        log::info!("Fns: {}", s.fns.len());
+    })
+}
+
+#[derive(Clone, Copy)]
+pub struct FnWrap {
+    f: fn() -> (),
+}
+
+impl From<fn() -> ()> for FnWrap {
+    fn from(f: FnPointer) -> Self {
+        Self { f }
+    }
+}
+
+type FnPointer = fn();
+
+impl State {
     #[must_use]
-    pub fn new() -> Self {
-        State {
-            vars: Rc::new(RefCell::new(HashMap::default())),
-        }
+    pub fn new() -> State {
+        let mut state = State {
+            vars: HashMap::default(),
+            // vars: Rc::new(RefCell::new(HashMap::default())),
+            fns: HashMap::default(),
+            // fns: Rc::new(RefCell::new(HashMap::default())),
+        };
+
+        state.set_fn("print_state".to_string(), print_state);
+
+        state
     }
 
-    pub fn set_var<T: 'static>(&mut self, key: &'a str, value: T) -> Option<T> {
-        if let Some(Ok(value)) = self
-            .vars
-            .borrow_mut()
-            .insert(Cow::Borrowed(key), Box::new(value))
-            .map(|v| v.downcast::<T>())
-        {
-            Some(*value)
-        } else {
-            None
-        }
-    }
-
-    pub fn remove_var<T: 'static>(&mut self, key: &str) -> Option<T> {
-        if let Some(Ok(value)) = self.vars.borrow_mut().remove(key).map(|v| v.downcast::<T>()) {
-            Some(*value)
-        } else {
-            None
-        }
+    pub fn set_var(&mut self, key: String, value: String) {
+        self.vars.insert(key, value);
     }
 
     #[must_use]
-    pub fn get_var<T: 'static>(&self, key: &str) -> Option<&T> {
-        if let Some(Some(value)) = self.vars.borrow().get(key).map(|v| v.downcast_ref::<&T>()) {
-            Some(value)
-        } else {
-            None
-        }
+    pub fn get_var(&self, key: &str) -> Option<&String> {
+        // TODO Clone hater 666
+        self.vars.get(key)
+    }
+
+    pub fn set_fn(&mut self, key: String, f: FnPointer) {
+        self.fns.insert(key, FnWrap::from(f));
+    }
+
+    pub fn get_fn(&self, key: &str) -> Option<FnPointer> {
+        self.fns.get(key).map(|w| w.f)
     }
 }

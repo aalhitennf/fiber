@@ -18,6 +18,10 @@ pub fn parse(source: &str) -> Result<Node, String> {
         eprintln!("There can be only one top-level tag! Using first.");
     }
 
+    if nodes.is_empty() {
+        eprintln!("Parser returned no nodes");
+    }
+
     let first = nodes.into_iter().next().ok_or("No root tag found!")?;
 
     Ok(first)
