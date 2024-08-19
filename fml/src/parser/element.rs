@@ -1,10 +1,9 @@
-use std::{
-    borrow::Cow,
-    fmt::Display,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::borrow::Cow;
+use std::fmt::Display;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::{parser::Attribute, AttributeValue};
+use crate::parser::Attribute;
+use crate::AttributeValue;
 
 #[derive(Debug, Clone)]
 pub enum Node<'a> {
@@ -15,10 +14,15 @@ pub enum Node<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct ElementId(u64);
 
+pub(crate) static ELEMENT_ID: AtomicU64 = AtomicU64::new(0);
+
 impl ElementId {
     pub fn next() -> Self {
-        static ELEMENT_ID: AtomicU64 = AtomicU64::new(0);
         ElementId(ELEMENT_ID.fetch_add(1, Ordering::Relaxed))
+    }
+
+    pub fn reset() {
+        ELEMENT_ID.store(0, Ordering::Relaxed);
     }
 }
 
@@ -68,7 +72,6 @@ impl<'a> Element<'a> {
             b"image" => ElementKind::Image,
             b"" => ElementKind::Empty,
             _ => ElementKind::Custom(Cow::Borrowed(name)),
-            // _ => ElementKind::Custom(name),
         };
 
         Element {

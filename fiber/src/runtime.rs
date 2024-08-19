@@ -1,13 +1,15 @@
-use std::{
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use crossbeam_channel::Sender;
 
 use crate::observer::FileObserver;
 
-#[derive(Clone)]
+pub struct RuntimeBuilder {
+    path: PathBuf,
+    handlers: Vec<fn()>,
+}
+
 pub struct Runtime {
     _observer: Rc<FileObserver>,
     source: String,
@@ -28,7 +30,7 @@ impl Runtime {
         })
     }
 
-    pub fn update_source(&mut self) {
+    pub(crate) fn update_source(&mut self) {
         match std::fs::read_to_string(&self.path.join("main.fml")) {
             Ok(new_source) => self.source = new_source,
             Err(e) => {
@@ -37,7 +39,7 @@ impl Runtime {
         }
     }
 
-    pub fn source(&self) -> &String {
+    pub(crate) fn source(&self) -> &str {
         &self.source
     }
 }

@@ -5,10 +5,14 @@
 )]
 
 pub mod runtime;
+pub mod signal;
 pub mod state;
 pub mod theme;
 
-use std::path::Path;
+use std::cell::LazyCell;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+// use std::rc::Rc;
 
 use floem::ext_event::create_signal_from_channel;
 use floem::keyboard::{Key, Modifiers, NamedKey};
@@ -17,87 +21,113 @@ use floem::reactive::{create_effect, provide_context, use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_view, empty, h_stack_from_iter, text, text_input, v_stack_from_iter, Decorators,
+    button, container, dyn_view, empty, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators,
 };
 use floem::{AnyView, IntoView, View};
 use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node};
 use log::LevelFilter;
+use parking_lot::RwLock;
 use runtime::Runtime;
-use state::State;
+use state::{FnWrap, State};
 use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 
 pub mod observer;
 
-pub fn create_app(entrypoint: impl AsRef<Path>, logging: bool) {
-    let path = entrypoint.as_ref().canonicalize().expect("Invalid path");
+// Export macros
+pub use fiber_macro::{func, main};
 
-    if logging {
-        env_logger::builder()
-            .filter_module("wgpu_hal", LevelFilter::Error)
-            .filter_module("wgpu_core", LevelFilter::Error)
-            .filter_module("naga", LevelFilter::Error)
-            .filter_module("floem_cosmic_text", LevelFilter::Error)
-            .filter_level(LevelFilter::Info)
-            .init();
-
-        log::info!("Logging OK");
-    }
-
-    if !path.exists() {
-        panic!("Path does not exists");
-    }
-
-    let (sender, receiver) = crossbeam_channel::unbounded();
-    let runtime = RwSignal::new(Runtime::new(&path, sender).expect("Failed to create Runtime"));
-    let state = RwSignal::new(State::new());
-    let theme = RwSignal::new(Theme::from_path(&path).expect("Invalid theme path"));
-
-    let runtime_event_sig = create_signal_from_channel(receiver.clone());
-    let theme_event_sig = create_signal_from_channel(theme.get_untracked().channel.1);
-
-    provide_context(runtime);
-    provide_context(state);
-    provide_context(theme);
-
-    create_effect(move |_| {
-        if let Some(_) = runtime_event_sig.get() {
-            runtime.update(Runtime::update_source);
-            log::info!("Sources reloaded");
-        }
-    });
-
-    create_effect(move |_| {
-        if let Some(_) = theme_event_sig.get() {
-            theme.update(Theme::reload);
-            log::info!("Css reloaded");
-        }
-    });
-
-    let theme_provider = theme_provider(
-        move || {
-            dyn_view(move || {
-                let source = runtime.with(|rt| rt.source().to_string());
-                let state = use_context::<RwSignal<State>>().unwrap();
-
-                let mut view = empty().into_any();
-                let view_ref = &mut view;
-                state.update(move |s| *view_ref = build_view(&source, s).into_any());
-                view
-            })
-            .css(&["body"])
-            .debug_name("Body")
-        },
-        ThemeOptions::with_path(path.join("styles")),
-    );
-
-    floem::launch(|| theme_provider);
+pub struct AppBuilder {
+    log: bool,
+    path: PathBuf,
+    state: State,
 }
 
-fn build_view(source: &str, state: &mut State) -> impl View {
+impl AppBuilder {
+    pub fn from_path(path: impl AsRef<Path>) -> Self {
+        assert!(path.as_ref().exists());
+
+        AppBuilder {
+            log: true,
+            path: path.as_ref().to_path_buf(),
+            state: State::new(&path.as_ref()),
+        }
+    }
+
+    pub fn log(mut self, v: bool) -> Self {
+        self.log = v;
+        self
+    }
+
+    fn set_logging(&self) {
+        if self.log {
+            env_logger::builder()
+                .filter_module("wgpu_hal", LevelFilter::Error)
+                .filter_module("wgpu_core", LevelFilter::Error)
+                .filter_module("naga", LevelFilter::Error)
+                .filter_module("floem_cosmic_text", LevelFilter::Error)
+                .filter_level(LevelFilter::Info)
+                .init();
+
+            log::info!("Logging OK");
+        }
+    }
+
+    pub fn handlers(mut self, handlers: Vec<(String, fn(Arc<RwLock<State>>))>) -> Self {
+        for (name, f) in handlers {
+            self.state.fns.insert(name.replace("_fibr_", ""), FnWrap::from(f));
+        }
+
+        self
+    }
+
+    pub fn run(self) {
+        self.set_logging();
+
+        let (sender, receiver) = crossbeam_channel::unbounded();
+
+        let runtime = RwSignal::new(Runtime::new(&self.path, sender).expect("Failed to create Runtime"));
+        let state = Arc::new(RwLock::new(self.state));
+        let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
+
+        let runtime_event_sig = create_signal_from_channel(receiver.clone());
+        let theme_event_sig = create_signal_from_channel(theme.get_untracked().channel.1);
+
+        provide_context(runtime);
+        provide_context(state);
+        provide_context(theme);
+
+        create_effect(move |_| {
+            if let Some(_) = runtime_event_sig.get() {
+                runtime.update(Runtime::update_source);
+                log::info!("Sources reloaded");
+            }
+        });
+
+        create_effect(move |_| {
+            if let Some(_) = theme_event_sig.get() {
+                theme.update(Theme::reload);
+                log::info!("Css reloaded");
+            }
+        });
+
+        let theme_provider = theme_provider(
+            move || {
+                dyn_view(move || runtime.with(|rt| build_view(rt.source()).into_any()))
+                    .css(&["body"])
+                    .debug_name("Body")
+            },
+            ThemeOptions::with_path(self.path.join("styles")),
+        );
+
+        floem::launch(|| theme_provider);
+    }
+}
+
+fn build_view(source: &str) -> impl View {
     let start = std::time::SystemTime::now();
 
     let view = match parse(&source) {
-        Ok(node) => c_node_to_view(&node, state),
+        Ok(node) => c_node_to_view(&node),
         Err(e) => text(e).into_any(),
     }
     .style(Style::size_full)
@@ -110,69 +140,101 @@ fn build_view(source: &str, state: &mut State) -> impl View {
     view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| id.inspect())
 }
 
-pub fn c_node_to_view(node: &Node, state: &mut State) -> AnyView {
+pub fn c_node_to_view(node: &Node) -> AnyView {
     match node {
-        Node::Text(t) => text(t).into_any(),
-        Node::Element(elem) => element_to_anyview(elem, state),
+        Node::Text(t) => text(t).css(&["text"]).into_any(),
+        Node::Element(elem) => element_to_anyview(elem),
     }
 }
 
 // Crashing because net
-fn element_to_anyview(elem: &Element, state: &mut State) -> AnyView {
-    let value_key = format!("value_{}", elem.id);
+fn element_to_anyview<'a>(elem: &Element) -> AnyView {
+    let elem_value_key = format!("value_{}", elem.id);
 
-    let children = elem
-        .children
-        .iter()
-        .map(|n| c_node_to_view(n, state))
-        .collect::<Vec<_>>();
+    let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
 
     let attrs = elem
         .attributes
         .iter()
         .fold(Style::new(), |s, attr| attr_to_style(attr, s));
 
-    if let Some(value) = elem.get_attr("value") {
-        state.set_var(value_key.clone(), value.to_string());
+    let value_var_name = elem.get_attr("value").map(|a| a.to_string());
+
+    if value_var_name.is_some() {
+        log::info!("value_var_name = {value_var_name:?}");
     }
 
     match &elem.kind {
-        ElementKind::Root => container(children).style(Style::size_full).into_any(),
-        ElementKind::Box => container(children).into_any(),
+        ElementKind::Root => container(children).style(Style::size_full).css(&["root"]).into_any(),
+        ElementKind::Box => container(children).css(&["box"]).into_any(),
         ElementKind::Text => children.into_any(),
+        ElementKind::Label => {
+            if let Some(var_name) = value_var_name {
+                let state = use_context::<Arc<RwLock<State>>>().unwrap();
+
+                let value_sig = state
+                    .read()
+                    .get_int(&var_name)
+                    .map(|s| *s)
+                    .unwrap_or_else(|| RwSignal::new(0));
+
+                label(move || value_sig.get()).into_any()
+            } else {
+                children.into_any()
+            }
+        }
         ElementKind::Button => {
-            let button = if let Some(Node::Text(t)) = elem.children.first() {
+            let mut button = if let Some(Node::Text(t)) = elem.children.first() {
                 let val = (*t).to_string();
                 button(move || val.clone()).into_any()
             } else {
-                button(|| "Button").into_any()
+                let id = elem.id;
+                button(move || format!("Button {id}")).into_any()
             };
 
             if let Some(value) = elem.get_attr("onclick") {
-                match state.get_fn(&value.to_string()) {
+                let state = use_context::<Arc<RwLock<State>>>().unwrap();
+                let f = state.read().get_fn(&value.to_string());
+                match f {
                     Some(onclick_fn) => {
-                        return button.on_click_cont(move |_| {
-                            log::info!("FOUND FN");
-                            onclick_fn();
+                        button = button.on_click_cont(move |_| {
+                            // let f_state = state.clone();
+                            onclick_fn(state.clone());
                         });
                     }
                     None => {
-                        return button.on_click_stop(|_| {
-                            log::warn!("NO FN :(:/");
+                        let fn_name = value.to_string();
+                        button = button.on_click_stop(move |_| {
+                            log::warn!("Button onclick fn '{fn_name}' not set");
                         });
                     }
                 }
             } else {
-                log::error!("NO ONCLICK ATTR");
+                log::debug!("Button without onclick attribute");
             }
 
             button.css(&["button"])
         }
-        ElementKind::HStack => h_stack_from_iter(children).into_any(),
-        ElementKind::VStack => v_stack_from_iter(children).into_any(),
+        ElementKind::HStack => h_stack_from_iter(children).css(&["hstack"]).into_any(),
+        ElementKind::VStack => v_stack_from_iter(children).css(&["vstack"]).into_any(),
         ElementKind::Input => {
-            let value = state.get_var(&value_key).map(|v| v.to_string()).unwrap_or_default();
-            let buffer = RwSignal::new(value);
+            // let buffer = if let Some(var_name) = value_var {
+            //     state
+            //         .get_string(&var_name)
+            //         .map(|v| *v)
+            //         .unwrap_or_else(|| RwSignal::new(format!("Var {var_name} not found")))
+            // } else {
+            //     RwSignal::new(format!("Input has no value"))
+            // };
+            let state = use_context::<Arc<RwLock<State>>>().unwrap();
+            let buffer = state
+                .read()
+                .get_string(&value_var_name.unwrap_or_else(|| {
+                    // log::warn!("Variable {value_var_name:?} not found");
+                    elem_value_key.clone()
+                }))
+                .map(|v| *v)
+                .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
 
             text_input(buffer).into_any()
         }
@@ -209,7 +271,7 @@ fn attr_value_to_px_pct(value: AttributeValue) -> PxPct {
         AttributeValue::String { value, .. } => parser::parse_px_pct(value).unwrap_or(PxPct::Px(0.0)),
         AttributeValue::Float { value, .. } => PxPct::Px(value),
         AttributeValue::Integer { value, .. } => PxPct::Px(value as f64),
-        _ => todo!("Get value from runtime"),
+        AttributeValue::Variable { .. } => todo!("Get value from runtime"),
     }
 }
 
@@ -225,7 +287,7 @@ fn attr_value_to_px_pct_auto(value: AttributeValue) -> PxPctAuto {
         }
         AttributeValue::Float { value, .. } => PxPctAuto::Px(value),
         AttributeValue::Integer { value, .. } => PxPctAuto::Px(value as f64),
-        _ => todo!("Get value from runtime"),
+        AttributeValue::Variable { .. } => todo!("Get value from runtime"),
     }
 }
 
@@ -237,3 +299,5 @@ fn attr_value_to_color(value: AttributeValue) -> Color {
         Color::WHITE
     }
 }
+
+pub const RUNTIME_WRAPS: LazyCell<Vec<fn()>> = LazyCell::new(|| Vec::new());

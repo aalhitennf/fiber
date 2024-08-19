@@ -18,8 +18,9 @@ pub enum TokenKind<'a> {
     TagName(&'a str),
     AttributeName(&'a str),
     AttributeValue(&'a str),
+    EqualSign, // =
     Variable(&'a str),
-    EqualSign,     // =
+    Expression(&'a str),
     Text(&'a str), // Text content between tags
     LineComment(&'a str),
     // EOF,
@@ -35,8 +36,9 @@ impl<'a> Display for TokenKind<'a> {
             TokenKind::TagName(name) => write!(f, "TagName: {name}"),
             TokenKind::AttributeName(name) => write!(f, "AttributeName: {name}"),
             TokenKind::AttributeValue(value) => write!(f, "AttributeValue: {value}"),
-            TokenKind::Variable(name) => write!(f, "Variable: {name}"),
             TokenKind::EqualSign => write!(f, "="),
+            TokenKind::Variable(name) => write!(f, "Variable: {name}"),
+            TokenKind::Expression(expr) => write!(f, "Expression: {expr}"),
             TokenKind::Text(text) => write!(f, "Text content between tags: {text}"),
             TokenKind::LineComment(comment) => write!(f, "LineComment: {comment}"),
             // TokenKind::EOF => write!(f, "EOF"),

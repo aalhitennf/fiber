@@ -30,3 +30,27 @@ where
         self.style(move |s| theme.get().apply_classes(s, keys))
     }
 }
+
+// struct ClassNames(Vec<String>);
+
+// impl From<String> for ClassNames {
+//     fn from(value: String) -> Self {
+//         ClassNames(
+//             value
+//                 .split_whitespace()
+//                 .map(str::trim)
+//                 .map(String::from)
+//                 .collect::<Vec<_>>(),
+//         )
+//     }
+// }
+
+// impl<I, S> From<I> for ClassNames
+// where
+//     I: IntoIterator<Item = S>,
+//     S: ToString,
+// {
+//     fn from(value: I) -> Self {
+//         ClassNames(value.into_iter().map(|v| v.to_string()).collect::<Vec<_>>())
+//     }
+// }

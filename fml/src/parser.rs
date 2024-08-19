@@ -5,8 +5,8 @@ mod error;
 
 use std::borrow::Cow;
 
-pub use attr::{Attribute, AttributeValue};
-pub use element::{Element, ElementKind, Node};
+pub use attr::{Attribute, AttributeValue, VariableName, VariableType};
+pub use element::{Element, ElementId, ElementKind, Node};
 
 use crate::lexer::{Token, TokenKind};
 
@@ -27,6 +27,9 @@ impl<'a> Parser<'a> {
                 }
             )
         });
+
+        ElementId::reset();
+
         Parser { tokens, position: 0 }
     }
 
@@ -79,6 +82,7 @@ impl<'a> Parser<'a> {
                     } else {
                         return Err(format!("Expected AttributeValue: Line {line} Col {col}"));
                     };
+
                     self.advance();
 
                     attributes.push(Attribute {

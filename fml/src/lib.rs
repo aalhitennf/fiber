@@ -5,7 +5,7 @@ mod lexer;
 mod parser;
 
 pub use lexer::{Lexer, Token, TokenKind};
-pub use parser::{Attribute, AttributeValue, Element, ElementKind, Node, Parser};
+pub use parser::{Attribute, AttributeValue, Element, ElementKind, Node, Parser, VariableName, VariableType};
 
 pub fn parse(source: &str) -> Result<Node, String> {
     let mut lexer = Lexer::new(source);
