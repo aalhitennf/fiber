@@ -32,7 +32,7 @@ use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 pub mod observer;
 
 // Export macros
-pub use fiber_macro::{func, main};
+pub use fiber_macro::func;
 
 pub struct AppBuilder {
     log: bool,

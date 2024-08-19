@@ -61,28 +61,6 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ItemFn);
-
-    let fn_name = &input.sig.ident; // Function name
-
-    if fn_name != "main" {
-        panic!("fiber::main can be derived only on main function!");
-    }
-
-    let fn_output = &input.sig.output; // Function output
-    let scope = input.block;
-
-    quote! {
-        fn #fn_name() #fn_output {
-
-            #scope
-        }
-    }
-    .into()
-}
-
-#[proc_macro_attribute]
 pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
