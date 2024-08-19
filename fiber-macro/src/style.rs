@@ -49,7 +49,7 @@ pub fn parse_enum_variant(v: &Variant) -> Option<ParsedVariant<'_>> {
         .expect("Invalid convert fn value");
 
     let Some(prop_attr) = v.attrs.iter().find(|a| a.path().is_ident("prop")) else {
-        panic!("Missing prop attribute for {}", ident);
+        panic!("Missing prop attribute for {ident}");
     };
 
     let Ok(prop) = prop_attr.parse_args::<Ident>() else {
