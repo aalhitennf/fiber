@@ -194,7 +194,7 @@ impl<'a> Lexer<'a> {
                         end: self.position,
                         line: self.line,
                         col: self.column,
-                    })
+                    });
                 }
 
                 '"' if inside_tag => {
@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
                         }
 
                         tokens.push(Token {
-                            kind: TokenKind::Text(&self.input[start_pos..self.position].trim()),
+                            kind: TokenKind::Text(self.input[start_pos..self.position].trim()),
                             start: start_pos,
                             end: self.position,
                             line: self.line,

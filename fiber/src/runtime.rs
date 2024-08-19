@@ -13,9 +13,9 @@ pub struct Runtime {
 
 impl Runtime {
     pub fn new(path: &Path, sender: Sender<()>) -> Result<Self, Box<dyn std::error::Error>> {
-        let observer = FileObserver::new(&path, sender, true)?;
+        let observer = FileObserver::new(path, sender, true)?;
         log::info!("Runtime observing {path:?}");
-        let source = std::fs::read_to_string(&path.join("main.fml"))?;
+        let source = std::fs::read_to_string(path.join("main.fml"))?;
         log::info!("Main source found ({})", source.len());
 
         Ok(Runtime {
@@ -26,7 +26,7 @@ impl Runtime {
     }
 
     pub(crate) fn update_source(&mut self) {
-        match std::fs::read_to_string(&self.path.join("main.fml")) {
+        match std::fs::read_to_string(self.path.join("main.fml")) {
             Ok(new_source) => self.source = new_source,
             Err(e) => {
                 log::error!("{e}");

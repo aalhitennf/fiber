@@ -1,3 +1,5 @@
+#![allow(clippy::missing_errors_doc, clippy::many_single_char_names)]
+
 use std::str::FromStr;
 
 use fiber_macro::StyleParser;
@@ -22,7 +24,7 @@ use regex::Regex;
 
 lazy_static! {
     // Matches Css comment blocks /* */
-    static ref COMMENT_REGEX: Regex = Regex::new(r#"\/\*[^\*]+\*\/"#).unwrap();
+    static ref COMMENT_REGEX: Regex = Regex::new(r"\/\*[^\*]+\*\/").unwrap();
     // Matches everything inside brackets (..)
     static ref BRACKETS_REGEX: Regex = Regex::new(r"\(([^)]+)\)").unwrap();
     // Matches everything inside braces {..}

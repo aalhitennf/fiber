@@ -88,10 +88,10 @@ pub enum AttributeValue<'a> {
 impl<'a> ToString for AttributeValue<'a> {
     fn to_string(&self) -> String {
         match self {
-            AttributeValue::String { value, .. } => value.to_string(),
-            AttributeValue::Integer { value, .. } => value.to_string(),
-            AttributeValue::Float { value, .. } => value.to_string(),
-            AttributeValue::Variable { name, .. } => name.to_string(),
+            AttributeValue::String { value, .. } => (*value).to_string(),
+            AttributeValue::Integer { value, .. } => (*value).to_string(),
+            AttributeValue::Float { value, .. } => (*value).to_string(),
+            AttributeValue::Variable { name, .. } => (*name).to_string(),
         }
     }
 }
@@ -126,6 +126,7 @@ impl<'a> AttributeValue<'a> {
     }
 
     #[inline]
+    #[must_use]
     pub fn from_token(token: &TokenKind<'a>, line: usize, col: usize) -> Self {
         match token {
             TokenKind::Variable(value) => AttributeValue::Variable {
@@ -133,7 +134,7 @@ impl<'a> AttributeValue<'a> {
                 line,
                 col,
             },
-            TokenKind::AttributeValue(value) => AttributeValue::new(&value, line, col).unwrap(),
+            TokenKind::AttributeValue(value) => AttributeValue::new(value, line, col).unwrap(),
             _ => panic!("Invalid token {token:?}, expecting Variable or AttributeValue"),
             // _ => AttributeValue::String { value: AttributeValue::, line, col }
         }

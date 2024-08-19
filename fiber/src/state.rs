@@ -89,26 +89,25 @@ impl State {
         for line in content.lines() {
             let parts = line.split([':', ' ']).collect::<Vec<_>>();
 
-            match parts[..] {
-                [t, n, d] => {
-                    let kind = VariableType::from(t);
-                    let name = n.to_string();
-                    match kind {
-                        VariableType::String | VariableType::Unknown => {
-                            self.strings.insert(name, RwSignal::new(d.to_string()));
-                        }
-                        VariableType::Integer => {
-                            self.ints
-                                .insert(name, RwSignal::new(d.parse::<i64>().unwrap_or_default()));
-                        }
-                        VariableType::Float => {
-                            self.floats
-                                .insert(name, RwSignal::new(d.parse::<f64>().unwrap_or_default()));
-                        }
-                    };
-                }
+            if let [t, n, d] = parts[..] {
+                let kind = VariableType::from(t);
+                let name = n.to_string();
 
-                _ => log::warn!("Invalid variable definition: {line}"),
+                match kind {
+                    VariableType::String | VariableType::Unknown => {
+                        self.strings.insert(name, RwSignal::new(d.to_string()));
+                    }
+                    VariableType::Integer => {
+                        self.ints
+                            .insert(name, RwSignal::new(d.parse::<i64>().unwrap_or_default()));
+                    }
+                    VariableType::Float => {
+                        self.floats
+                            .insert(name, RwSignal::new(d.parse::<f64>().unwrap_or_default()));
+                    }
+                };
+            } else {
+                log::warn!("Invalid variable definition: {line}");
             }
         }
     }

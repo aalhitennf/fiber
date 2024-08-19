@@ -25,11 +25,11 @@ pub struct ParsedVariant<'a> {
     prop: Ident,
 }
 
-pub fn parse_enum_variant<'a>(v: &'a Variant) -> Option<ParsedVariant<'a>> {
+pub fn parse_enum_variant(v: &Variant) -> Option<ParsedVariant<'_>> {
     let ident = &v.ident;
 
     let Some(name_attr) = v.attrs.iter().find(|a| a.path().is_ident("key")) else {
-        panic!("Missing key attribute for {}", ident.to_string());
+        panic!("Missing key attribute for {ident}");
     };
 
     let Ok(lit) = name_attr.parse_args::<LitStr>() else {
@@ -45,11 +45,11 @@ pub fn parse_enum_variant<'a>(v: &'a Variant) -> Option<ParsedVariant<'a>> {
                 .ok()
                 .map(|lit| Ident::new(&lit.value(), Span::call_site()))
         })
-        .expect(&format!("Missing convert fn for {}", ident.to_string()))
+        .expect(&format!("Missing convert fn for {ident}"))
         .expect("Invalid convert fn value");
 
     let Some(prop_attr) = v.attrs.iter().find(|a| a.path().is_ident("prop")) else {
-        panic!("Missing prop attribute for {}", ident.to_string());
+        panic!("Missing prop attribute for {}", ident);
     };
 
     let Ok(prop) = prop_attr.parse_args::<Ident>() else {

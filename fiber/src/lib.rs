@@ -9,10 +9,8 @@ pub mod signal;
 pub mod state;
 pub mod theme;
 
-use std::cell::LazyCell;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-// use std::rc::Rc;
 
 use floem::ext_event::create_signal_from_channel;
 use floem::keyboard::{Key, Modifiers, NamedKey};
@@ -43,16 +41,20 @@ pub struct AppBuilder {
 }
 
 impl AppBuilder {
+    /// # Panics
+    /// Panics if given path doesn't exists
+    #[must_use]
     pub fn from_path(path: impl AsRef<Path>) -> Self {
         assert!(path.as_ref().exists());
 
         AppBuilder {
             log: true,
             path: path.as_ref().to_path_buf(),
-            state: State::new(&path.as_ref()),
+            state: State::new(path.as_ref()),
         }
     }
 
+    #[must_use]
     pub fn log(mut self, v: bool) -> Self {
         self.log = v;
         self
@@ -72,6 +74,7 @@ impl AppBuilder {
         }
     }
 
+    #[must_use]
     pub fn handlers(mut self, handlers: Vec<(String, fn(Arc<RwLock<State>>))>) -> Self {
         for (name, f) in handlers {
             self.state.fns.insert(name.replace("_fibr_", ""), FnWrap::from(f));
@@ -80,6 +83,8 @@ impl AppBuilder {
         self
     }
 
+    /// # Panics
+    /// Panics if creating Runtime fails
     pub fn run(self) {
         self.set_logging();
 
@@ -97,14 +102,14 @@ impl AppBuilder {
         provide_context(theme);
 
         create_effect(move |_| {
-            if let Some(_) = runtime_event_sig.get() {
+            if runtime_event_sig.get().is_some() {
                 runtime.update(Runtime::update_source);
                 log::info!("Sources reloaded");
             }
         });
 
         create_effect(move |_| {
-            if let Some(_) = theme_event_sig.get() {
+            if theme_event_sig.get().is_some() {
                 theme.update(Theme::reload);
                 log::info!("Css reloaded");
             }
@@ -126,7 +131,7 @@ impl AppBuilder {
 fn build_view(source: &str) -> impl View {
     let start = std::time::SystemTime::now();
 
-    let view = match parse(&source) {
+    let view = match parse(source) {
         Ok(node) => c_node_to_view(&node),
         Err(e) => text(e).into_any(),
     }
@@ -148,7 +153,7 @@ pub fn c_node_to_view(node: &Node) -> AnyView {
 }
 
 // Crashing because net
-fn element_to_anyview<'a>(elem: &Element) -> AnyView {
+fn element_to_anyview(elem: &Element) -> AnyView {
     let elem_value_key = format!("value_{}", elem.id);
 
     let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
@@ -175,7 +180,7 @@ fn element_to_anyview<'a>(elem: &Element) -> AnyView {
                 let value_sig = state
                     .read()
                     .get_int(&var_name)
-                    .map(|s| *s)
+                    .copied()
                     .unwrap_or_else(|| RwSignal::new(0));
 
                 label(move || value_sig.get()).into_any()
@@ -195,19 +200,17 @@ fn element_to_anyview<'a>(elem: &Element) -> AnyView {
             if let Some(value) = elem.get_attr("onclick") {
                 let state = use_context::<Arc<RwLock<State>>>().unwrap();
                 let f = state.read().get_fn(&value.to_string());
-                match f {
-                    Some(onclick_fn) => {
-                        button = button.on_click_cont(move |_| {
-                            // let f_state = state.clone();
-                            onclick_fn(state.clone());
-                        });
-                    }
-                    None => {
-                        let fn_name = value.to_string();
-                        button = button.on_click_stop(move |_| {
-                            log::warn!("Button onclick fn '{fn_name}' not set");
-                        });
-                    }
+
+                if let Some(onclick_fn) = f {
+                    button = button.on_click_cont(move |_| {
+                        // let f_state = state.clone();
+                        onclick_fn(state.clone());
+                    });
+                } else {
+                    let fn_name = value.to_string();
+                    button = button.on_click_stop(move |_| {
+                        log::warn!("Button onclick fn '{fn_name}' not set");
+                    });
                 }
             } else {
                 log::debug!("Button without onclick attribute");
@@ -218,22 +221,12 @@ fn element_to_anyview<'a>(elem: &Element) -> AnyView {
         ElementKind::HStack => h_stack_from_iter(children).css(&["hstack"]).into_any(),
         ElementKind::VStack => v_stack_from_iter(children).css(&["vstack"]).into_any(),
         ElementKind::Input => {
-            // let buffer = if let Some(var_name) = value_var {
-            //     state
-            //         .get_string(&var_name)
-            //         .map(|v| *v)
-            //         .unwrap_or_else(|| RwSignal::new(format!("Var {var_name} not found")))
-            // } else {
-            //     RwSignal::new(format!("Input has no value"))
-            // };
             let state = use_context::<Arc<RwLock<State>>>().unwrap();
+
             let buffer = state
                 .read()
-                .get_string(&value_var_name.unwrap_or_else(|| {
-                    // log::warn!("Variable {value_var_name:?} not found");
-                    elem_value_key.clone()
-                }))
-                .map(|v| *v)
+                .get_string(&value_var_name.unwrap_or_else(|| elem_value_key.clone()))
+                .copied()
                 .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
 
             text_input(buffer).into_any()
@@ -299,5 +292,3 @@ fn attr_value_to_color(value: AttributeValue) -> Color {
         Color::WHITE
     }
 }
-
-pub const RUNTIME_WRAPS: LazyCell<Vec<fn()>> = LazyCell::new(|| Vec::new());

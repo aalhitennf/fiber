@@ -82,6 +82,7 @@ impl<'a> Element<'a> {
         }
     }
 
+    #[must_use]
     pub fn get_attr(&self, name: &str) -> Option<AttributeValue<'_>> {
         self.attributes.iter().find(|a| a.name == name).map(|a| a.value)
     }

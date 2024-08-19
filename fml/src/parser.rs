@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
                             ..
                         })
                     ) {
-                        return Err(format!("Expected Equal (=): Line {} Col {}", line, col));
+                        return Err(format!("Expected Equal (=): Line {line} Col {col}"));
                     }
                     self.advance();
 

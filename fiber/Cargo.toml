@@ -17,6 +17,3 @@ log = "0.4.22"
 notify = "6.1.1"
 regex = "1.10.5"
 parking_lot = { version = "0.12.3" }
-
-[[example]]
-name = "calc"

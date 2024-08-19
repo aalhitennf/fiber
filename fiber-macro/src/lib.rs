@@ -66,12 +66,9 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let fn_name = &input.sig.ident; // Function name
 
-    if fn_name.to_string() != "main" {
-        panic!("fiber::main must be derived on main function!");
+    if fn_name != "main" {
+        panic!("fiber::main can be derived only on main function!");
     }
-
-    // let fn_vis = &input.vis; // Function visibility
-    // let fn_inputs = &input.sig.inputs; // Function inputs
 
     let fn_output = &input.sig.output; // Function output
     let scope = input.block;
@@ -91,16 +88,11 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let fn_name = &input.sig.ident; // Function name
 
-    if fn_name.to_string() == "main" {
+    if fn_name == "main" {
         panic!("fiber::func cannot be derived on main function!");
     }
 
-    // let fn_vis = &input.vis; // Function visibility
     let fn_inputs = &input.sig.inputs; // Function inputs
-
-    // if !fn_inputs.is_empty() {
-    //     panic!("This function cannot have arguments. Use use_context to access state.");
-    // }
 
     let fn_output = &input.sig.output; // Function output
 
@@ -111,10 +103,8 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let scope = input.block;
 
     let fn_name_string = fn_name.to_string();
-    let fn_name_wrapper_string = format!("_fibr_{}", fn_name_string);
+    let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
     let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::mixed_site());
-
-    println!("fn name: {:?}", fn_name_string);
 
     quote! {
         fn #fn_name_wrapper(#fn_inputs) {
