@@ -1,9 +1,11 @@
 <vstack class="app">
-    <label value={int:counter} />
+    <label value={int:counter} class="counter"/>
 
     <hstack>
-        <button onclick={increase_counter}>Increase</button>
         <button onclick={decrease_counter}>Decrease</button>
-        <button onclick={dbg_print_state}>State</button>
+        <button onclick={increase_counter}>Increase</button>
     </hstack>
+
+    <button onclick={dbg_print_state}>Log state</button>
+
 </vstack>

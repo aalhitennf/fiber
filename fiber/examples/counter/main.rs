@@ -30,12 +30,5 @@ fn decrease_counter(state: Arc<RwLock<State>>) {
         .map(|s| s.get_untracked())
         .unwrap_or_default();
 
-    // match state.try_write_for(Duration::from_secs(1)) {
-    //     Some(mut lock) => {
     state.write().set_int("counter".to_string(), val - 1);
-    //     }
-    //     None => {
-    //         log::error!("Failed to acquire state lock");
-    //     }
-    // }
 }

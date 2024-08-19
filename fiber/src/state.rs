@@ -1,37 +1,34 @@
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::sync::Arc;
 
-use floem::reactive::{use_context, RwSignal};
+use floem::reactive::RwSignal;
 use fml::{AttributeValue, VariableType};
 use parking_lot::RwLock;
-use xxhash_rust::xxh64::Xxh64Builder;
 
 #[derive(Default)]
 pub struct State {
-    pub strings: HashMap<String, RwSignal<String>, Xxh64Builder>,
-    pub ints: HashMap<String, RwSignal<i64>, Xxh64Builder>,
-    pub floats: HashMap<String, RwSignal<f64>, Xxh64Builder>,
-    pub(crate) fns: HashMap<String, FnWrap, Xxh64Builder>,
+    pub strings: HashMap<String, RwSignal<String>>,
+    pub ints: HashMap<String, RwSignal<i64>>,
+    pub floats: HashMap<String, RwSignal<f64>>,
+    pub(crate) fns: HashMap<String, FnWrap>,
 }
 
-pub struct StateCtx(Arc<RwLock<State>>);
-// pub type StateCtx = Arc<Mute>
+// pub struct StateCtx(Arc<RwLock<State>>);
 
-impl Deref for StateCtx {
-    type Target = Arc<RwLock<State>>;
+// impl Deref for StateCtx {
+//     type Target = Arc<RwLock<State>>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
 
-impl DerefMut for StateCtx {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+// impl DerefMut for StateCtx {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.0
+//     }
+// }
 
 fn print_state(state: Arc<RwLock<State>>) {
     log::info!("State status\n");
@@ -42,40 +39,21 @@ fn print_state(state: Arc<RwLock<State>>) {
         log::info!("\t{} = {}", k, v.get_untracked());
     }
 
-    log::info!("Ints ({}):", state.ints.len());
+    log::info!("\nInts ({}):", state.ints.len());
     for (k, v) in &state.ints {
         log::info!("\t{} = {}", k, v.get_untracked());
     }
 
-    log::info!("Floats ({}):", state.floats.len());
+    log::info!("\nFloats ({}):", state.floats.len());
     for (k, v) in &state.floats {
         log::info!("\t{} = {}", k, v.get_untracked());
     }
 
-    log::info!("Fns ({}):", state.fns.len());
+    log::info!("\nFns ({}):", state.fns.len());
     for (k, v) in &state.fns {
         log::info!("\t{} = {:?}", k, v);
     }
 }
-
-// fn inc_sum() {
-//     let state = use_context::<RwSignal<StateCtx>>().unwrap();
-
-//     state.with(|s| {
-//         let read_lock = s.read();
-
-//         let Some(current) = read_lock.get_string("sum") else {
-//             drop(read_lock);
-//             return;
-//         };
-
-//         let new_value = current.get().parse::<i64>().unwrap_or_default() + 1;
-//         drop(read_lock);
-
-//         let mut write_lock = s.write();
-//         write_lock.set_string("sum".to_string(), new_value.to_string());
-//     });
-// }
 
 #[derive(Debug)]
 pub struct FnWrap {
@@ -97,9 +75,7 @@ impl State {
         state.read_vars(path);
 
         state.set_fn("dbg_print_state".to_string(), print_state);
-        // state.set_fn("inc_sum_1".to_string(), inc_sum);
 
-        // StateCtx(Arc::new(RwLock::new(state)))
         state
     }
 

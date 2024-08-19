@@ -21,7 +21,7 @@ use floem::reactive::{create_effect, provide_context, use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_view, empty, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators,
+    button, container, dyn_view, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators,
 };
 use floem::{AnyView, IntoView, View};
 use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node};

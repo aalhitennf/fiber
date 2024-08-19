@@ -5,11 +5,6 @@ use crossbeam_channel::Sender;
 
 use crate::observer::FileObserver;
 
-pub struct RuntimeBuilder {
-    path: PathBuf,
-    handlers: Vec<fn()>,
-}
-
 pub struct Runtime {
     _observer: Rc<FileObserver>,
     source: String,
