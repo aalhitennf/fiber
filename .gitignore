@@ -1,2 +1,3 @@
 /target
-**/tests/data/*
+fml/tests/data/*.lex
+fml/tests/data/*.ast
