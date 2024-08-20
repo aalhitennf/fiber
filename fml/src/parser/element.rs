@@ -5,10 +5,19 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::parser::Attribute;
 use crate::AttributeValue;
 
+use super::attr::VariableRef;
+
 #[derive(Debug, Clone)]
 pub enum Node<'a> {
     Element(Element<'a>),
-    Text(&'a str),
+    // Text(&'a str),
+    Text(TextElement<'a>),
+}
+
+#[derive(Debug, Clone)]
+pub struct TextElement<'a> {
+    pub content: &'a str,
+    pub variable_refs: Vec<VariableRef<'a>>,
 }
 
 #[derive(Debug, Clone, Copy)]

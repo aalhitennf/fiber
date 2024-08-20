@@ -147,7 +147,7 @@ fn build_view(source: &str) -> impl View {
 
 pub fn c_node_to_view(node: &Node) -> AnyView {
     match node {
-        Node::Text(t) => text(t).css(&["text"]).into_any(),
+        Node::Text(t) => text(t.content).css(&["text"]).into_any(),
         Node::Element(elem) => element_to_anyview(elem),
     }
 }
@@ -190,7 +190,7 @@ fn element_to_anyview(elem: &Element) -> AnyView {
         }
         ElementKind::Button => {
             let mut button = if let Some(Node::Text(t)) = elem.children.first() {
-                let val = (*t).to_string();
+                let val = t.content.to_string();
                 button(move || val.clone()).into_any()
             } else {
                 let id = elem.id;

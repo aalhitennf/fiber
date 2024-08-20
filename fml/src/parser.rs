@@ -3,11 +3,17 @@ mod element;
 mod error;
 
 use std::borrow::Cow;
+use std::cell::LazyCell;
 
+use attr::VariableRef;
 pub use attr::{Attribute, AttributeValue, VariableName, VariableType};
+use element::TextElement;
 pub use element::{Element, ElementId, ElementKind, Node};
+use regex::Regex;
 
 use crate::lexer::{Token, TokenKind};
+
+const VAR_REGEX: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"\{[^}]*\}").unwrap());
 
 pub struct Parser<'a> {
     tokens: Vec<Token<'a>>,
@@ -114,14 +120,48 @@ impl<'a> Parser<'a> {
                     children.push(Node::Element(self.parse_element()?));
                 }
                 TokenKind::Text(text) => {
-                    children.push(Node::Text(text));
+                    // for cap in VAR_REGEX.captures_iter(text) {
+                    //     let matched_content = &cap[0];
+                    //     let start = cap.get(0).unwrap().start();
+                    //     let end = cap.get(0).unwrap().end();
+                    //     if !cap[0].contains("\\}") {
+                    //         println!("Variable: {:?} {}-{}", matched_content, start, end);
+                    //     }
+                    // }
+
+                    let variable_refs = VAR_REGEX
+                        .captures_iter(text)
+                        .filter_map(|cap| {
+                            if !cap[0].contains("\\}") {
+                                let start = cap.get(0).unwrap().start();
+                                let end = cap.get(0).unwrap().end();
+                                let range = start + 1..end - 1;
+                                let inner_content = &text[range];
+                                let kind = VariableType::from(inner_content);
+
+                                Some(VariableRef {
+                                    name: inner_content,
+                                    start,
+                                    end,
+                                    kind,
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    children.push(Node::Text(TextElement {
+                        content: text,
+                        variable_refs,
+                    }));
                     self.advance();
                 }
-                TokenKind::Variable(name) => {
-                    println!("skipvar {name}");
-                    children.push(Node::Text(name));
-                    self.advance();
-                }
+                // TokenKind::Variable(name) => {
+                //     println!("skipvar {name}");
+                //     children.push(Node::Text(name));
+                //     self.advance();
+                // }
                 _ => break,
             }
         }
@@ -205,16 +245,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // if !matches!(
-        //     self.current_token(),
-        //     Some(Token {
-        //         kind: TokenKind::TagClose,
-        //         ..
-        //     })
-        // ) {
-        //     return Err(format!("Expected TagClose: Line {} Col {}", tok));
-        // }
-
         self.advance();
 
         if let Some(Token {
@@ -265,10 +295,6 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-
-        // while let Ok(element) = self.parse_element() {
-        //     nodes.push(Node::Element(element));
-        // }
 
         Ok(nodes)
     }

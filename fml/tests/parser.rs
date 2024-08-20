@@ -34,7 +34,20 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
 
             *depth -= 1;
         }
-        Node::Text(text) => buf.push_str(&format!("{spaces}{text}\n")),
+        Node::Text(text) => {
+            buf.push_str(&format!("{spaces}{content}", content = text.content));
+
+            if !text.variable_refs.is_empty() {
+                buf.push_str(" | Vars: ");
+            }
+
+            for var in &text.variable_refs {
+                buf.push_str(var.name);
+                buf.push_str(" - ");
+            }
+
+            buf.push('\n');
+        },
     }
 }
 

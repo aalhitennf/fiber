@@ -62,6 +62,14 @@ impl<'a> From<&'a str> for VariableType {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct VariableRef<'a> {
+    pub name: &'a str,
+    pub start: usize,
+    pub end: usize,
+    pub kind: VariableType,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum AttributeValue<'a> {
     String {
         value: &'a str,

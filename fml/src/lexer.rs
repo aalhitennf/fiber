@@ -181,7 +181,7 @@ impl<'a> Lexer<'a> {
                     col: self.column,
                 }),
 
-                '{' => {
+                '{' if inside_tag => {
                     while let Some(next_ch) = self.next_char() {
                         if next_ch == '}' {
                             break;
@@ -278,7 +278,7 @@ impl<'a> Lexer<'a> {
                         }
                     } else {
                         while let Some(next_ch) = self.peek_char() {
-                            if next_ch == '<' || next_ch == '{' {
+                            if next_ch == '<' {
                                 break;
                             }
 
