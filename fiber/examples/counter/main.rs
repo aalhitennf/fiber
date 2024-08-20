@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use fiber::state::State;
+use fiber::state::{State, StateCtx};
 use fiber::AppBuilder;
+use floem::reactive::use_context;
 use parking_lot::RwLock;
 
 fn main() {
@@ -11,23 +12,19 @@ fn main() {
 }
 
 #[fiber::func]
-fn increase_counter(state: Arc<RwLock<State>>) {
-    let val = state
-        .read()
-        .get_int("counter")
-        .map(|s| s.get_untracked())
-        .unwrap_or_default();
+fn increase_counter() {
+    let state = use_context::<StateCtx>().unwrap();
 
-    state.write().set_int("counter".to_string(), val + 1);
+    let val = state.get_int("counter").map(|s| s.get_untracked()).unwrap_or_default();
+
+    state.set_int("counter".to_string(), val + 1);
 }
 
 #[fiber::func]
 fn decrease_counter(state: Arc<RwLock<State>>) {
-    let val = state
-        .read()
-        .get_int("counter")
-        .map(|s| s.get_untracked())
-        .unwrap_or_default();
+    let state = use_context::<StateCtx>().unwrap();
 
-    state.write().set_int("counter".to_string(), val - 1);
+    let val = state.get_int("counter").map(|s| s.get_untracked()).unwrap_or_default();
+
+    state.set_int("counter".to_string(), val - 1);
 }

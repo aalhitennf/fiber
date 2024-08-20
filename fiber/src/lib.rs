@@ -19,15 +19,14 @@ use floem::reactive::{create_effect, provide_context, use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_container, dyn_view, h_stack_from_iter, label, text, text_input, v_stack_from_iter,
-    Decorators, TextEditor,
+    button, container, dyn_view, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators,
 };
 use floem::{AnyView, IntoView, View};
-use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node, TextElement, VariableType};
+use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node, VariableType};
 use log::LevelFilter;
 use parking_lot::RwLock;
 use runtime::Runtime;
-use state::{FnWrap, State};
+use state::{FnWrap, State, StateCtx};
 use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 
 pub mod observer;
@@ -76,9 +75,16 @@ impl AppBuilder {
     }
 
     #[must_use]
-    pub fn handlers(mut self, handlers: Vec<(String, fn(Arc<RwLock<State>>))>) -> Self {
+    pub fn handlers(self, handlers: Vec<(String, fn())>) -> Self {
         for (name, f) in handlers {
-            self.state.fns.insert(name.replace("_fibr_", ""), FnWrap::from(f));
+            if self
+                .state
+                .fns
+                .insert(name.replace("_fibr_", ""), FnWrap::from(f))
+                .is_some()
+            {
+                log::warn!("Duplicate fn '{name}'");
+            }
         }
 
         self
@@ -92,7 +98,7 @@ impl AppBuilder {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
         let runtime = RwSignal::new(Runtime::new(&self.path, sender).expect("Failed to create Runtime"));
-        let state = Arc::new(RwLock::new(self.state));
+        let state = Arc::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
         let runtime_event_sig = create_signal_from_channel(receiver.clone());
@@ -247,13 +253,9 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                 return text("Label can have only one text element as child").into_any();
             };
 
-            let state = use_context::<Arc<RwLock<State>>>().unwrap();
+            let state = use_context::<StateCtx>().unwrap();
 
             let content = RwSignal::new(t.content.to_string());
-
-            // let replace_var_int = |var: &str, sig: RwSignal<i64>| {
-            //     let val_str = sig.get().to_string();
-            // };
 
             for var in &t.variable_refs {
                 let Some((_, name)) = var.name().split_once(':') else {
@@ -265,7 +267,6 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     VariableType::String => {}
                     VariableType::Integer => {
                         let value = state
-                            .read()
                             .get_int(name)
                             .unwrap_or_else(|| RwSignal::new(0))
                             .get()
@@ -280,6 +281,8 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                 }
             }
 
+            drop(state);
+
             label(move || content.get()).into_any()
         }
         ElementKind::Button => {
@@ -292,12 +295,14 @@ fn element_to_anyview(elem: &Element) -> AnyView {
             };
 
             if let Some(value) = elem.get_attr("onclick") {
-                let state = use_context::<Arc<RwLock<State>>>().unwrap();
-                let f = state.read().get_fn(&value.to_string());
+                let state = use_context::<StateCtx>().unwrap();
+                let f = state.get_fn(&value.to_string()).clone();
+                // drop(read_lock);
 
                 if let Some(onclick_fn) = f {
                     button = button.on_click_cont(move |_| {
-                        onclick_fn(state.clone());
+                        // let state = use_context::<Arc<RwLock<State>>>().unwrap();
+                        onclick_fn();
                     });
                 } else {
                     let fn_name = value.to_string();

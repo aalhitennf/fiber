@@ -70,7 +70,7 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
         panic!("fiber::func cannot be derived on main function!");
     }
 
-    let fn_inputs = &input.sig.inputs; // Function inputs
+    // let fn_inputs = &input.sig.inputs; // Function inputs
 
     let fn_output = &input.sig.output; // Function output
 
@@ -85,11 +85,11 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::mixed_site());
 
     quote! {
-        fn #fn_name_wrapper(#fn_inputs) {
+        fn #fn_name_wrapper() {
             #scope
         }
 
-        fn #fn_name() -> (String, fn(std::sync::Arc<parking_lot::RwLock<State>>)) {
+        fn #fn_name() -> (String, fn()) {
             (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
         }
 
