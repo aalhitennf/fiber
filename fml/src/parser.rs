@@ -7,8 +7,7 @@ use std::cell::LazyCell;
 
 use attr::VariableRef;
 pub use attr::{Attribute, AttributeValue, VariableName, VariableType};
-use element::TextElement;
-pub use element::{Element, ElementId, ElementKind, Node};
+pub use element::{Element, ElementId, ElementKind, Node, TextElement};
 use regex::Regex;
 
 use crate::lexer::{Token, TokenKind};
@@ -137,10 +136,10 @@ impl<'a> Parser<'a> {
                                 let end = cap.get(0).unwrap().end();
                                 let range = start + 1..end - 1;
                                 let inner_content = &text[range];
-                                let kind = VariableType::from(inner_content);
+                                let kind = VariableType::from(inner_content.split_once(':').map(|s| s.0).unwrap_or_default()); // Idiotic
 
                                 Some(VariableRef {
-                                    name: inner_content,
+                                    full_match: &text[start..end],
                                     start,
                                     end,
                                     kind,

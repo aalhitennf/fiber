@@ -1,5 +1,5 @@
 <vstack class="app">
-    <label value={int:counter} class="counter"/>
+    <label class="counter">{int:counter}</label>
 
     <hstack>
         <button onclick={decrease_counter}>Decrease</button>

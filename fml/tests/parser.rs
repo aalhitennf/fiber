@@ -42,7 +42,7 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
             }
 
             for var in &text.variable_refs {
-                buf.push_str(var.name);
+                buf.push_str(var.name());
                 buf.push_str(" - ");
             }
 

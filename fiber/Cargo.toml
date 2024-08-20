@@ -7,6 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
+parking_lot = "0.12.3"
 crossbeam-channel = "0.5.13"
 env_logger = "0.11.3"
 floem.workspace = true
@@ -16,4 +17,3 @@ lazy_static = "1.5.0"
 log = "0.4.22"
 notify = "6.1.1"
 regex = "1.10.5"
-parking_lot = { version = "0.12.3" }

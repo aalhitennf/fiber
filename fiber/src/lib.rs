@@ -19,10 +19,11 @@ use floem::reactive::{create_effect, provide_context, use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_view, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators,
+    button, container, dyn_container, dyn_view, h_stack_from_iter, label, text, text_input, v_stack_from_iter,
+    Decorators, TextEditor,
 };
 use floem::{AnyView, IntoView, View};
-use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node};
+use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node, TextElement, VariableType};
 use log::LevelFilter;
 use parking_lot::RwLock;
 use runtime::Runtime;
@@ -152,11 +153,54 @@ pub fn c_node_to_view(node: &Node) -> AnyView {
     }
 }
 
+// fn text_element_to_anyview(elem: &TextElement) -> AnyView {
+//     if elem.variable_refs.is_empty() {
+//         text(elem.content).css(&["text"]).into_any()
+//     } else {
+//         let state = use_context::<Arc<RwLock<State>>>().unwrap();
+//         let state = state.read();
+
+//         let mut content = elem.content.to_string();
+
+//         for var in &elem.variable_refs {
+//             let Some((_, name)) = var.name().split_once(':') else {
+//                 log::error!("Invalid variable {:?}", var);
+//                 continue;
+//             };
+
+//             match var.kind {
+//                 VariableType::String => {
+//                     let sig = state.get_string(name);
+//                     if let Some(sig) = sig {
+//                         content = content.replace(var.full_match, &sig.get());
+//                     }
+//                 }
+//                 VariableType::Integer => {
+//                     let sig = state.get_int(name);
+//                     if let Some(sig) = sig {
+//                         let val = sig.get();
+//                         content = content.replace(var.full_match, &val.to_string());
+//                     }
+//                 }
+//                 VariableType::Float => {
+//                     let sig = state.get_float(name);
+//                     if let Some(sig) = sig {
+//                         // content = content.replace(var.full_match, &sig.get().to_string());
+//                     }
+//                 }
+//                 _ => {
+//                     log::warn!("Unsupported inline variable type {:?}", var.kind);
+//                 }
+//             }
+//         }
+
+//         label(move || content.clone()).into_any()
+//     }
+// }
+
 // Crashing because net
 fn element_to_anyview(elem: &Element) -> AnyView {
     let elem_value_key = format!("value_{}", elem.id);
-
-    let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
 
     let attrs = elem
         .attributes
@@ -170,23 +214,73 @@ fn element_to_anyview(elem: &Element) -> AnyView {
     }
 
     match &elem.kind {
-        ElementKind::Root => container(children).style(Style::size_full).css(&["root"]).into_any(),
-        ElementKind::Box => container(children).css(&["box"]).into_any(),
-        ElementKind::Text => children.into_any(),
+        ElementKind::Root => {
+            let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
+            container(children).style(Style::size_full).css(&["root"]).into_any()
+        }
+        ElementKind::Box => {
+            let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
+            container(children).css(&["box"]).into_any()
+        }
+        // ElementKind::Text => {
+        //     elem.children.iter().for_each(|e| {
+        //         if let Node::Text(t) = e {
+        //             if !t.variable_refs.is_empty() {
+        //                 log::warn!("<text> element doesn't support inline variables, use <label> instead.\nSource: '{}'\nVars '{:?}'", t.content, t.variable_refs);
+        //             }
+        //         }
+        //     });
+
+        //     children.into_any()
+        // }
         ElementKind::Label => {
-            if let Some(var_name) = value_var_name {
-                let state = use_context::<Arc<RwLock<State>>>().unwrap();
-
-                let value_sig = state
-                    .read()
-                    .get_int(&var_name)
-                    .copied()
-                    .unwrap_or_else(|| RwSignal::new(0));
-
-                label(move || value_sig.get()).into_any()
-            } else {
-                children.into_any()
+            // let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
+            if elem.children.is_empty() {
+                return text("").into_any();
             }
+
+            if elem.children.iter().any(|e| matches!(e, Node::Element(_))) {
+                return text("Label can have only one text element as child").into_any();
+            }
+
+            let Some(Node::Text(t)) = elem.children.first() else {
+                return text("Label can have only one text element as child").into_any();
+            };
+
+            let state = use_context::<Arc<RwLock<State>>>().unwrap();
+
+            let content = RwSignal::new(t.content.to_string());
+
+            // let replace_var_int = |var: &str, sig: RwSignal<i64>| {
+            //     let val_str = sig.get().to_string();
+            // };
+
+            for var in &t.variable_refs {
+                let Some((_, name)) = var.name().split_once(':') else {
+                    log::error!("Invalid variable {:?}", var);
+                    continue;
+                };
+
+                match var.kind {
+                    VariableType::String => {}
+                    VariableType::Integer => {
+                        let value = state
+                            .read()
+                            .get_int(name)
+                            .unwrap_or_else(|| RwSignal::new(0))
+                            .get()
+                            .to_string();
+
+                        content.update(|c| *c = c.replace(var.full_match, &value));
+                    }
+                    VariableType::Float => {}
+                    _ => {
+                        log::warn!("Unsupported inline variable type {:?}", var.kind);
+                    }
+                }
+            }
+
+            label(move || content.get()).into_any()
         }
         ElementKind::Button => {
             let mut button = if let Some(Node::Text(t)) = elem.children.first() {
@@ -203,7 +297,6 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
                 if let Some(onclick_fn) = f {
                     button = button.on_click_cont(move |_| {
-                        // let f_state = state.clone();
                         onclick_fn(state.clone());
                     });
                 } else {
@@ -218,15 +311,20 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
             button.css(&["button"])
         }
-        ElementKind::HStack => h_stack_from_iter(children).css(&["hstack"]).into_any(),
-        ElementKind::VStack => v_stack_from_iter(children).css(&["vstack"]).into_any(),
+        ElementKind::HStack => {
+            let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
+            h_stack_from_iter(children).css(&["hstack"]).into_any()
+        }
+        ElementKind::VStack => {
+            let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
+            v_stack_from_iter(children).css(&["vstack"]).into_any()
+        }
         ElementKind::Input => {
             let state = use_context::<Arc<RwLock<State>>>().unwrap();
 
             let buffer = state
                 .read()
                 .get_string(&value_var_name.unwrap_or_else(|| elem_value_key.clone()))
-                .copied()
                 .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
 
             text_input(buffer).into_any()

@@ -113,9 +113,11 @@ impl State {
     }
 
     pub fn set_string(&mut self, key: String, value: String) -> Option<String> {
-        if let Some(sig) = self.strings.get_mut(&key) {
-            sig.update(|v| *v = value);
-            Some(sig.get_untracked())
+        let sig = self.strings.get(&key).cloned();
+        if let Some(sig) = sig {
+            sig.set(value.clone());
+            // sig.update(|v| *v = value.clone());
+            Some(value)
         } else {
             self.strings.insert(key, RwSignal::new(value));
             None
@@ -123,9 +125,10 @@ impl State {
     }
 
     pub fn set_int(&mut self, key: String, value: i64) -> Option<i64> {
-        if let Some(sig) = self.ints.get_mut(&key) {
-            sig.update(|v| *v = value);
-            Some(sig.get_untracked())
+        if let Some(sig) = self.ints.get(&key).cloned() {
+            sig.set(value);
+            // sig.update(|v| *v = value);
+            Some(value)
         } else {
             self.ints.insert(key, RwSignal::new(value));
             None
@@ -133,7 +136,7 @@ impl State {
     }
 
     pub fn set_float(&mut self, key: String, value: f64) -> Option<f64> {
-        if let Some(sig) = self.floats.get_mut(&key) {
+        if let Some(sig) = self.floats.get(&key) {
             sig.update(|v| *v = value);
             Some(sig.get_untracked())
         } else {
@@ -151,7 +154,7 @@ impl State {
 
         match value {
             AttributeValue::String { value, .. } => {
-                if let Some(sig) = self.strings.get_mut(&key) {
+                if let Some(sig) = self.strings.get(&key) {
                     sig.update(|v| *v = value.to_string());
                 } else {
                     self.strings.insert(key, RwSignal::new(value.to_string()));
@@ -159,7 +162,7 @@ impl State {
             }
 
             AttributeValue::Integer { value, .. } => {
-                if let Some(sig) = self.ints.get_mut(&key) {
+                if let Some(sig) = self.ints.get(&key) {
                     sig.update(|v| *v = value);
                 } else {
                     self.ints.insert(key, RwSignal::new(value));
@@ -167,7 +170,7 @@ impl State {
             }
 
             AttributeValue::Float { value, .. } => {
-                if let Some(sig) = self.floats.get_mut(&key) {
+                if let Some(sig) = self.floats.get(&key) {
                     sig.update(|v| *v = value);
                 } else {
                     self.floats.insert(key, RwSignal::new(value));
@@ -189,18 +192,18 @@ impl State {
     }
 
     #[must_use]
-    pub fn get_string(&self, key: &str) -> Option<&RwSignal<String>> {
-        self.strings.get(key)
+    pub fn get_string(&self, key: &str) -> Option<RwSignal<String>> {
+        self.strings.get(key).copied()
     }
 
     #[must_use]
-    pub fn get_int(&self, key: &str) -> Option<&RwSignal<i64>> {
-        self.ints.get(key)
+    pub fn get_int(&self, key: &str) -> Option<RwSignal<i64>> {
+        self.ints.get(key).copied()
     }
 
     #[must_use]
-    pub fn get_float(&self, key: &str) -> Option<&RwSignal<f64>> {
-        self.floats.get(key)
+    pub fn get_float(&self, key: &str) -> Option<RwSignal<f64>> {
+        self.floats.get(key).copied()
     }
 
     #[must_use]

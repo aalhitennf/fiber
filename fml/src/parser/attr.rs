@@ -63,10 +63,16 @@ impl<'a> From<&'a str> for VariableType {
 
 #[derive(Debug, Clone, Copy)]
 pub struct VariableRef<'a> {
-    pub name: &'a str,
+    pub full_match: &'a str,
     pub start: usize,
     pub end: usize,
     pub kind: VariableType,
+}
+
+impl VariableRef<'_> {
+    pub fn name(&self) -> &'_ str {
+        &self.full_match[self.start+1..self.end-1]
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

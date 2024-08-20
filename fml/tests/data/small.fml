@@ -14,6 +14,7 @@
     </button>
 
     <label>input value is {input_value} ok</label>
+    <text>input value is {input_value} ok</text>
     <label>input value is \{input_value} ok</label>
 
     <vstack>
