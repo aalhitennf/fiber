@@ -210,4 +210,28 @@ impl State {
     pub fn get_fn(&self, key: &str) -> Option<FnPointer> {
         self.fns.get(key).map(|w| w.f)
     }
+
+    pub fn update_string(&self, key: &str, f: impl FnOnce(&mut String)) {
+        if let Some(sig) = self.strings.get(key) {
+            sig.update(f);
+        } else {
+            log::warn!("No string var {key}");
+        }
+    }
+
+    pub fn update_int(&self, key: &str, f: impl FnOnce(&mut i64)) {
+        if let Some(sig) = self.ints.get(key) {
+            sig.update(f);
+        } else {
+            log::warn!("No int var {key}");
+        }
+    }
+
+    pub fn update_float(&self, key: &str, f: impl FnOnce(&mut f64)) {
+        if let Some(sig) = self.floats.get(key) {
+            sig.update(f);
+        } else {
+            log::warn!("No float var {key}");
+        }
+    }
 }

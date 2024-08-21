@@ -8,18 +8,10 @@ fn main() {
 
 #[fiber::func]
 fn increase_counter(state: StateCtx) {
-    let val = state.get_int("counter").map(|s| s.get_untracked());
-
-    if let Some(val) = val {
-        state.set_int("counter".to_string(), val + 1);
-    }
+    state.update_int("counter", |val| *val += 1);
 }
 
 #[fiber::func]
 fn decrease_counter(state: StateCtx) {
-    let val = state.get_int("counter").map(|s| s.get_untracked());
-
-    if let Some(val) = val {
-        state.set_int("counter".to_string(), val - 1);
-    }
+    state.update_int("counter", |val| *val -= 1);
 }
