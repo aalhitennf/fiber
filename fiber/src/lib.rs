@@ -26,13 +26,34 @@ use fml::{parse, Attribute, AttributeValue, Element, ElementKind, Node, Variable
 use log::LevelFilter;
 use parking_lot::RwLock;
 use runtime::Runtime;
-use state::{FnWrap, State, StateCtx};
+use state::{FnWrap, State};
 use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 
 pub mod observer;
 
 // Export macros
 pub use fiber_macro::func;
+
+// Export some common structs
+pub use state::StateCtx;
+
+// #[cfg(not(debug_assertions))]
+// pub struct Source(String);
+
+// #[cfg(not(debug_assertions))]
+// impl Deref for Source {
+//     type Target = String;
+
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
+
+macro_rules! source {
+    ($lit:expr) => {
+        const SOURCE: &str = include_str!($lit);
+    };
+}
 
 pub struct AppBuilder {
     log: bool,
@@ -92,6 +113,7 @@ impl AppBuilder {
 
     /// # Panics
     /// Panics if creating Runtime fails
+    #[cfg(debug_assertions)]
     pub fn run(self) {
         self.set_logging();
 
@@ -133,6 +155,29 @@ impl AppBuilder {
 
         floem::launch(|| theme_provider);
     }
+
+    /// # Panics
+    #[cfg(not(debug_assertions))]
+    pub fn run(self) {
+        self.set_logging();
+
+        let state = Arc::new(self.state);
+        let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
+
+        provide_context(state);
+        provide_context(theme);
+
+        let theme_provider = theme_provider(
+            move || {
+                dyn_view(move || build_view(&include_str!("../../examples/counter/fiber/main.fml")))
+                    .css(&["body"])
+                    .debug_name("Body")
+            },
+            ThemeOptions::with_path(self.path.join("styles")),
+        );
+
+        floem::launch(|| theme_provider);
+    }
 }
 
 fn build_view(source: &str) -> impl View {
@@ -159,51 +204,6 @@ pub fn c_node_to_view(node: &Node) -> AnyView {
     }
 }
 
-// fn text_element_to_anyview(elem: &TextElement) -> AnyView {
-//     if elem.variable_refs.is_empty() {
-//         text(elem.content).css(&["text"]).into_any()
-//     } else {
-//         let state = use_context::<Arc<RwLock<State>>>().unwrap();
-//         let state = state.read();
-
-//         let mut content = elem.content.to_string();
-
-//         for var in &elem.variable_refs {
-//             let Some((_, name)) = var.name().split_once(':') else {
-//                 log::error!("Invalid variable {:?}", var);
-//                 continue;
-//             };
-
-//             match var.kind {
-//                 VariableType::String => {
-//                     let sig = state.get_string(name);
-//                     if let Some(sig) = sig {
-//                         content = content.replace(var.full_match, &sig.get());
-//                     }
-//                 }
-//                 VariableType::Integer => {
-//                     let sig = state.get_int(name);
-//                     if let Some(sig) = sig {
-//                         let val = sig.get();
-//                         content = content.replace(var.full_match, &val.to_string());
-//                     }
-//                 }
-//                 VariableType::Float => {
-//                     let sig = state.get_float(name);
-//                     if let Some(sig) = sig {
-//                         // content = content.replace(var.full_match, &sig.get().to_string());
-//                     }
-//                 }
-//                 _ => {
-//                     log::warn!("Unsupported inline variable type {:?}", var.kind);
-//                 }
-//             }
-//         }
-
-//         label(move || content.clone()).into_any()
-//     }
-// }
-
 // Crashing because net
 fn element_to_anyview(elem: &Element) -> AnyView {
     let elem_value_key = format!("value_{}", elem.id);
@@ -224,23 +224,13 @@ fn element_to_anyview(elem: &Element) -> AnyView {
             let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
             container(children).style(Style::size_full).css(&["root"]).into_any()
         }
+
         ElementKind::Box => {
             let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
             container(children).css(&["box"]).into_any()
         }
-        // ElementKind::Text => {
-        //     elem.children.iter().for_each(|e| {
-        //         if let Node::Text(t) = e {
-        //             if !t.variable_refs.is_empty() {
-        //                 log::warn!("<text> element doesn't support inline variables, use <label> instead.\nSource: '{}'\nVars '{:?}'", t.content, t.variable_refs);
-        //             }
-        //         }
-        //     });
 
-        //     children.into_any()
-        // }
         ElementKind::Label => {
-            // let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
             if elem.children.is_empty() {
                 return text("").into_any();
             }
@@ -285,6 +275,7 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
             label(move || content.get()).into_any()
         }
+
         ElementKind::Button => {
             let mut button = if let Some(Node::Text(t)) = elem.children.first() {
                 let val = t.content.to_string();
@@ -316,14 +307,17 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
             button.css(&["button"])
         }
+
         ElementKind::HStack => {
             let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
             h_stack_from_iter(children).css(&["hstack"]).into_any()
         }
+
         ElementKind::VStack => {
             let children = elem.children.iter().map(|n| c_node_to_view(n)).collect::<Vec<_>>();
             v_stack_from_iter(children).css(&["vstack"]).into_any()
         }
+
         ElementKind::Input => {
             let state = use_context::<Arc<RwLock<State>>>().unwrap();
 

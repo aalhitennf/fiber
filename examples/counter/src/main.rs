@@ -1,12 +1,9 @@
-use std::sync::Arc;
-
-use fiber::state::{State, StateCtx};
+use fiber::state::StateCtx;
 use fiber::AppBuilder;
 use floem::reactive::use_context;
-use parking_lot::RwLock;
 
 fn main() {
-    AppBuilder::from_path("fiber/examples/counter")
+    AppBuilder::from_path("./examples/counter/fiber")
         .handlers(vec![increase_counter(), decrease_counter()])
         .run();
 }
@@ -21,7 +18,7 @@ fn increase_counter() {
 }
 
 #[fiber::func]
-fn decrease_counter(state: Arc<RwLock<State>>) {
+fn decrease_counter() {
     let state = use_context::<StateCtx>().unwrap();
 
     let val = state.get_int("counter").map(|s| s.get_untracked()).unwrap_or_default();

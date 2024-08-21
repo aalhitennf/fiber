@@ -66,8 +66,10 @@ where
 #[derive(Clone)]
 pub struct Theme {
     path: PathBuf,
+    #[cfg(debug_assertions)]
     pub(crate) channel: (Sender<()>, Receiver<()>),
     map: HashMap<String, Style>,
+    #[cfg(debug_assertions)]
     _observer: Rc<FileObserver>,
 }
 
@@ -133,6 +135,7 @@ impl Theme {
     ///
     /// Will return `Err` if `path` does not exist or the user does not have
     /// permission to read it.
+    #[cfg(debug_assertions)]
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let path = path.as_ref().to_path_buf();
         let channel = crossbeam_channel::unbounded();
@@ -142,6 +145,22 @@ impl Theme {
             path,
             _observer: Rc::new(observer),
             channel,
+            map: HashMap::default(),
+        };
+
+        theme.reload();
+
+        Ok(theme)
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let path = path.as_ref().to_path_buf();
+
+        let mut theme = Theme {
+            path,
+            // _observer: Rc::new(observer),
+            // channel,
             map: HashMap::default(),
         };
 
@@ -208,10 +227,13 @@ where
     V: View + 'static,
 {
     let theme = Theme::from_path(options.path).expect("Invalid theme path");
+
+    #[cfg(debug_assertions)]
     let observer_event = create_signal_from_channel(theme.channel.1.clone());
 
     let theme = RwSignal::new(theme);
 
+    #[cfg(debug_assertions)]
     create_effect(move |_| {
         if let Some(()) = observer_event.get() {
             theme.update(Theme::reload);
