@@ -11,7 +11,6 @@ pub mod state;
 pub mod theme;
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use floem::ext_event::create_signal_from_channel;
 use floem::reactive::{create_effect, provide_context, RwSignal};
@@ -30,23 +29,33 @@ pub use fiber_macro::func;
 // Export common structs
 pub use state::StateCtx;
 
-pub struct AppBuilder {
+pub struct App {
     log: bool,
     path: PathBuf,
     state: State,
 }
 
-impl AppBuilder {
+impl App {
+    #[must_use]
+    pub fn new() -> Self {
+        let path = PathBuf::from("./fiber");
+        App {
+            log: true,
+            state: State::new(&path),
+            path,
+        }
+    }
+
     /// # Panics
     /// Panics if given path doesn't exists
     #[must_use]
     pub fn from_path(path: impl AsRef<Path>) -> Self {
-        assert!(path.as_ref().exists());
+        let path = path.as_ref().canonicalize().expect("Invalid path");
 
-        AppBuilder {
+        App {
             log: true,
-            path: path.as_ref().to_path_buf(),
-            state: State::new(path.as_ref()),
+            state: State::new(&path),
+            path,
         }
     }
 

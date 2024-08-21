@@ -1,7 +1,7 @@
-use fiber::{AppBuilder, StateCtx};
+use fiber::{App, StateCtx};
 
 fn main() {
-    AppBuilder::from_path("./examples/counter/fiber")
+    App::from_path("./examples/counter/fiber")
         .handlers(vec![increase_counter(), decrease_counter()])
         .run();
 }

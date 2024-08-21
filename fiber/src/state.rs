@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use floem::reactive::{use_context, RwSignal};
+use floem::reactive::RwSignal;
 use fml::{AttributeValue, VariableType};
 
 #[derive(Default)]
