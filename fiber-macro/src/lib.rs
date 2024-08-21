@@ -7,7 +7,9 @@ use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn, ReturnType};
+use syn::punctuated::Punctuated;
+use syn::token::Comma;
+use syn::{parse_macro_input, Data, DeriveInput, FnArg, Ident, ItemFn, PatType, ReturnType, Type};
 
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
@@ -62,16 +64,26 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
+    let attrs = attr.into_iter().map(|ts| ts.to_string()).collect::<Vec<_>>();
 
-    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async!");
+    let fn_pointer_path = if attrs.contains(&"debug".to_string()) {
+        quote! { crate::state::FnPointer }
+    } else {
+        quote! { fiber::state::FnPointer }
+    };
+
+    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async! (yet)");
 
     let fn_name = &input.sig.ident;
-    let fn_inputs = &input.sig.inputs;
-
-    assert!(fn_inputs.len() == 1, "fiber::func can only have one argument!");
     assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
+
+    let (names, types) = parse_inputs(&input.sig.inputs);
+
+    let injects = quote! {
+        #(let #names = floem::reactive::use_context::<#types>().unwrap();)*
+    };
 
     assert!(
         matches!(&input.sig.output, ReturnType::Default),
@@ -85,15 +97,38 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::call_site());
 
     quote! {
-        fn #fn_name_wrapper(state: fiber::StateCtx) {
+        fn #fn_name_wrapper() {
+            #injects
+
             #scope
         }
 
-        fn #fn_name() -> (String, fn(StateCtx)) {
+        fn #fn_name() -> (String, #fn_pointer_path) {
             (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
         }
 
 
     }
     .into()
+}
+
+fn parse_inputs(inputs: &Punctuated<FnArg, Comma>) -> (Vec<&Ident>, Vec<&Box<Type>>) {
+    let mut names = Vec::with_capacity(inputs.len());
+    let mut types = Vec::with_capacity(inputs.len());
+
+    for input in inputs {
+        match input {
+            FnArg::Typed(PatType { pat, ty, .. }) => {
+                if let syn::Pat::Ident(ident) = &**pat {
+                    names.push(&ident.ident);
+                    types.push(ty);
+                } else {
+                    panic!("Only named arguments are allowed in fiber::func");
+                }
+            }
+            _ => panic!("Only named arguments are allowed in fiber::func"),
+        }
+    }
+
+    (names, types)
 }

@@ -1,1 +1,3 @@
-@component
+<box>
+    <label>Component</label>
+</box>

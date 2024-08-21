@@ -18,7 +18,7 @@ use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
 use runtime::Runtime;
-use state::{FnWrap, State};
+use state::{FnPointer, State};
 use theme::{theme_provider, StyleCss, Theme, ThemeOptions};
 
 mod observer;
@@ -80,16 +80,9 @@ impl App {
     }
 
     #[must_use]
-    pub fn handlers(self, handlers: Vec<(String, fn(StateCtx))>) -> Self {
-        for (name, f) in handlers {
-            if self
-                .state
-                .fns
-                .insert(name.replace("_fibr_", ""), FnWrap::from(f))
-                .is_some()
-            {
-                log::warn!("Duplicate fn '{name}'");
-            }
+    pub fn handlers(self, handlers: Vec<(String, FnPointer)>) -> Self {
+        for h in handlers {
+            self.state.add_handler(h);
         }
 
         self

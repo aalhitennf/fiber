@@ -31,7 +31,8 @@ impl Deref for StateCtx {
     }
 }
 
-fn print_state(state: StateCtx) {
+#[fiber_macro::func(debug)]
+fn dbg_print_state(state: StateCtx) {
     log::info!("State\n");
 
     log::info!("String ({}):", state.strings.len());
@@ -66,7 +67,7 @@ impl From<FnPointer> for FnWrap {
     }
 }
 
-pub type FnPointer = fn(StateCtx);
+pub type FnPointer = fn();
 
 impl State {
     #[must_use]
@@ -74,7 +75,7 @@ impl State {
         let mut state = State::default();
         state.read_vars(path);
 
-        state.set_fn("dbg_print_state".to_string(), print_state);
+        state.add_handler(dbg_print_state());
 
         state
     }
@@ -147,6 +148,15 @@ impl State {
 
     pub fn set_fn(&self, key: String, f: FnPointer) {
         self.fns.insert(key, FnWrap::from(f));
+    }
+
+    /// # Panics
+    /// Panics if the handler already exists
+    pub fn add_handler(&self, (key, f): (String, FnPointer)) {
+        let name = key.replace("_fibr_", "");
+        if self.fns.insert(name.clone(), FnWrap::from(f)).is_some() {
+            panic!("Handler already exists: {name}");
+        }
     }
 
     pub fn set_var(&self, key: String, value: AttributeValue) {

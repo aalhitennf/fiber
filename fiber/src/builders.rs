@@ -137,8 +137,7 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
                 if let Some(onclick_fn) = f {
                     button = button.on_click_cont(move |_| {
-                        let state = state.clone();
-                        onclick_fn(state);
+                        onclick_fn();
                     });
                 } else {
                     let fn_name = value.to_string();
