@@ -29,31 +29,13 @@ use runtime::Runtime;
 use state::{FnWrap, State};
 use theme::{parser, theme_provider, StyleCss, Theme, ThemeOptions};
 
-pub mod observer;
+mod observer;
 
 // Export macros
 pub use fiber_macro::func;
 
-// Export some common structs
+// Export common structs
 pub use state::StateCtx;
-
-// #[cfg(not(debug_assertions))]
-// pub struct Source(String);
-
-// #[cfg(not(debug_assertions))]
-// impl Deref for Source {
-//     type Target = String;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-
-macro_rules! source {
-    ($lit:expr) => {
-        const SOURCE: &str = include_str!($lit);
-    };
-}
 
 pub struct AppBuilder {
     log: bool,
