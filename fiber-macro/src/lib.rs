@@ -1,3 +1,5 @@
+#![allow(clippy::missing_panics_doc)]
+
 mod style;
 
 use proc_macro2::Span;
@@ -7,7 +9,6 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn, ReturnType};
 
-#[allow(clippy::missing_panics_doc)]
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -28,7 +29,7 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
     } = e
         .variants
         .iter()
-        .filter_map(parse_enum_variant)
+        .map(parse_enum_variant)
         .fold(ParsedVariants::default(), |mut v, p| {
             v.add(p);
             v
@@ -64,19 +65,20 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
-    let fn_name = &input.sig.ident; // Function name
+    // Function name
+    let fn_name = &input.sig.ident;
+    // Function inputs
+    // let fn_inputs = &input.sig.inputs;
 
-    if fn_name == "main" {
-        panic!("fiber::func cannot be derived on main function!");
-    }
+    assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
 
-    // let fn_inputs = &input.sig.inputs; // Function inputs
+    // Function output
+    let fn_output = &input.sig.output;
 
-    let fn_output = &input.sig.output; // Function output
-
-    if !matches!(fn_output, ReturnType::Default) {
-        panic!("This function cannot return a value. Use use_context to access state.");
-    }
+    assert!(
+        matches!(fn_output, ReturnType::Default),
+        "This function cannot return a value. Use use_context to access state."
+    );
 
     let scope = input.block;
 

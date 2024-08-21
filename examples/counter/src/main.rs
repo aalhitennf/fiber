@@ -25,3 +25,8 @@ fn decrease_counter() {
 
     state.set_int("counter".to_string(), val - 1);
 }
+
+#[fiber::func]
+async fn koira() {
+
+}

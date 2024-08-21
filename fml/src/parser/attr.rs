@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt::Display;
 
 use crate::TokenKind;
 
@@ -14,9 +15,9 @@ pub struct VariableName<'a> {
     pub kind: VariableType,
 }
 
-impl<'a> ToString for VariableName<'a> {
-    fn to_string(&self) -> String {
-        self.name.to_string()
+impl Display for VariableName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 
@@ -71,7 +72,7 @@ pub struct VariableRef<'a> {
 
 impl VariableRef<'_> {
     pub fn name(&self) -> &'_ str {
-        &self.full_match[self.start+1..self.end-1]
+        &self.full_match[self.start + 1..self.end - 1]
     }
 }
 
@@ -99,18 +100,20 @@ pub enum AttributeValue<'a> {
     },
 }
 
-impl<'a> ToString for AttributeValue<'a> {
-    fn to_string(&self) -> String {
+impl Display for AttributeValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AttributeValue::String { value, .. } => (*value).to_string(),
-            AttributeValue::Integer { value, .. } => (*value).to_string(),
-            AttributeValue::Float { value, .. } => (*value).to_string(),
-            AttributeValue::Variable { name, .. } => (*name).to_string(),
+            AttributeValue::String { value, .. } => write!(f, "{value}"),
+            AttributeValue::Integer { value, .. } => write!(f, "{value}"),
+            AttributeValue::Float { value, .. } => write!(f, "{value}"),
+            AttributeValue::Variable { name, .. } => write!(f, "{name}"),
         }
     }
 }
 
 impl<'a> AttributeValue<'a> {
+    /// # Errors
+    /// Returns an error if the input is not a valid `AttributeValue`
     #[inline]
     pub fn new(input: &'a str, line: usize, col: usize) -> Result<AttributeValue, String> {
         if input.contains(':') {
@@ -139,6 +142,8 @@ impl<'a> AttributeValue<'a> {
         })
     }
 
+    /// # Panics
+    ///  Panics if the token is not valid `AttributeValue`
     #[inline]
     #[must_use]
     pub fn from_token(token: &TokenKind<'a>, line: usize, col: usize) -> Self {

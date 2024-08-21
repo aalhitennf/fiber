@@ -25,7 +25,9 @@ pub struct ParsedVariant<'a> {
     prop: Ident,
 }
 
-pub fn parse_enum_variant(v: &Variant) -> Option<ParsedVariant<'_>> {
+// # Panics
+// Panics if any of the required attributes are missing
+pub fn parse_enum_variant(v: &Variant) -> ParsedVariant<'_> {
     let ident = &v.ident;
 
     let Some(name_attr) = v.attrs.iter().find(|a| a.path().is_ident("key")) else {
@@ -45,7 +47,7 @@ pub fn parse_enum_variant(v: &Variant) -> Option<ParsedVariant<'_>> {
                 .ok()
                 .map(|lit| Ident::new(&lit.value(), Span::call_site()))
         })
-        .expect(&format!("Missing convert fn for {ident}"))
+        .unwrap_or_else(|| panic!("Missing convert fn for {ident}"))
         .expect("Invalid convert fn value");
 
     let Some(prop_attr) = v.attrs.iter().find(|a| a.path().is_ident("prop")) else {
@@ -56,10 +58,10 @@ pub fn parse_enum_variant(v: &Variant) -> Option<ParsedVariant<'_>> {
         panic!("Prop attribute must be ident");
     };
 
-    Some(ParsedVariant {
+    ParsedVariant {
         ident,
         name: lit,
         parser,
         prop,
-    })
+    }
 }

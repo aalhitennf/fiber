@@ -12,6 +12,8 @@ pub struct Runtime {
 }
 
 impl Runtime {
+    /// # Errors
+    /// Fails if file observer can't be created
     pub fn new(path: &Path, sender: Sender<()>) -> Result<Self, Box<dyn std::error::Error>> {
         let observer = FileObserver::new(path, sender, true)?;
         log::info!("Runtime observing {path:?}");

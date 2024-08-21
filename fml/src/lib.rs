@@ -9,6 +9,8 @@ pub use parser::{
     Attribute, AttributeValue, Element, ElementKind, Node, Parser, TextElement, VariableName, VariableType,
 };
 
+/// # Errors
+/// Returns an error if the source is not a valid FML
 pub fn parse(source: &str) -> Result<Node, String> {
     let mut lexer = Lexer::new(source);
     let tokens = lexer.lex();

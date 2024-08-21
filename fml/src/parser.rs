@@ -3,7 +3,6 @@ mod element;
 mod error;
 
 use std::borrow::Cow;
-use std::cell::LazyCell;
 
 use attr::VariableRef;
 pub use attr::{Attribute, AttributeValue, VariableName, VariableType};
@@ -12,7 +11,9 @@ use regex::Regex;
 
 use crate::lexer::{Token, TokenKind};
 
-const VAR_REGEX: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"\{[^}]*\}").unwrap());
+lazy_static::lazy_static! {
+    static ref VAR_REGEX: Regex = Regex::new(r"\{[^}]*\}").unwrap();
+}
 
 pub struct Parser<'a> {
     tokens: Vec<Token<'a>>,
@@ -119,24 +120,18 @@ impl<'a> Parser<'a> {
                     children.push(Node::Element(self.parse_element()?));
                 }
                 TokenKind::Text(text) => {
-                    // for cap in VAR_REGEX.captures_iter(text) {
-                    //     let matched_content = &cap[0];
-                    //     let start = cap.get(0).unwrap().start();
-                    //     let end = cap.get(0).unwrap().end();
-                    //     if !cap[0].contains("\\}") {
-                    //         println!("Variable: {:?} {}-{}", matched_content, start, end);
-                    //     }
-                    // }
-
                     let variable_refs = VAR_REGEX
                         .captures_iter(text)
                         .filter_map(|cap| {
-                            if !cap[0].contains("\\}") {
+                            if cap[0].contains("\\}") {
+                                None
+                            } else {
                                 let start = cap.get(0).unwrap().start();
                                 let end = cap.get(0).unwrap().end();
                                 let range = start + 1..end - 1;
                                 let inner_content = &text[range];
-                                let kind = VariableType::from(inner_content.split_once(':').map(|s| s.0).unwrap_or_default()); // Idiotic
+                                let kind =
+                                    VariableType::from(inner_content.split_once(':').map(|s| s.0).unwrap_or_default()); // Idiotic
 
                                 Some(VariableRef {
                                     full_match: &text[start..end],
@@ -144,8 +139,6 @@ impl<'a> Parser<'a> {
                                     end,
                                     kind,
                                 })
-                            } else {
-                                None
                             }
                         })
                         .collect::<Vec<_>>();
