@@ -84,7 +84,15 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                 };
 
                 match var.kind {
-                    VariableType::String => {}
+                    VariableType::String => {
+                        let value = state
+                            .get_string(name)
+                            .unwrap_or_else(|| RwSignal::new("String {} not in state".to_string()))
+                            .get()
+                            .to_string();
+
+                        content.update(|c| *c = c.replace(var.full_match, &value));
+                    }
                     VariableType::Integer => {
                         let value = state
                             .get_int(name)
@@ -94,7 +102,15 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
                     }
-                    VariableType::Float => {}
+                    VariableType::Float => {
+                        let value = state
+                            .get_float(name)
+                            .unwrap_or_else(|| RwSignal::new(0.0))
+                            .get()
+                            .to_string();
+
+                        content.update(|c| *c = c.replace(var.full_match, &value));
+                    }
                     VariableType::Unknown => {
                         log::warn!("Unsupported inline variable type {:?}", var.kind);
                     }
