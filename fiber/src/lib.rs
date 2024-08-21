@@ -71,7 +71,7 @@ impl AppBuilder {
     }
 
     #[must_use]
-    pub fn handlers(self, handlers: Vec<(String, fn())>) -> Self {
+    pub fn handlers(self, handlers: Vec<(String, fn(StateCtx))>) -> Self {
         for (name, f) in handlers {
             if self
                 .state
@@ -95,7 +95,7 @@ impl AppBuilder {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
         let runtime = RwSignal::new(Runtime::new(&self.path, sender).expect("Failed to create Runtime"));
-        let state = Arc::new(self.state);
+        let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
         let runtime_event_sig = create_signal_from_channel(receiver.clone());
@@ -146,7 +146,7 @@ impl AppBuilder {
             move || {
                 // TODO This probably don't need to be dyn_view on release build and could be
                 // TODO scoped down to specific views/nodes
-                dyn_view(move || build_view(&include_str!("../../examples/counter/fiber/main.fml")))
+                dyn_view(move || build::source(&include_str!("../../examples/counter/fiber/main.fml")))
                     .css(&["body"])
                     .debug_name("Body")
             },

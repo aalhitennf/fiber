@@ -1,6 +1,4 @@
-use fiber::state::StateCtx;
-use fiber::AppBuilder;
-use floem::reactive::use_context;
+use fiber::{AppBuilder, StateCtx};
 
 fn main() {
     AppBuilder::from_path("./examples/counter/fiber")
@@ -9,24 +7,19 @@ fn main() {
 }
 
 #[fiber::func]
-fn increase_counter() {
-    let state = use_context::<StateCtx>().unwrap();
+fn increase_counter(state: StateCtx) {
+    let val = state.get_int("counter").map(|s| s.get_untracked());
 
-    let val = state.get_int("counter").map(|s| s.get_untracked()).unwrap_or_default();
-
-    state.set_int("counter".to_string(), val + 1);
+    if let Some(val) = val {
+        state.set_int("counter".to_string(), val + 1);
+    }
 }
 
 #[fiber::func]
-fn decrease_counter() {
-    let state = use_context::<StateCtx>().unwrap();
+fn decrease_counter(state: StateCtx) {
+    let val = state.get_int("counter").map(|s| s.get_untracked());
 
-    let val = state.get_int("counter").map(|s| s.get_untracked()).unwrap_or_default();
-
-    state.set_int("counter".to_string(), val - 1);
-}
-
-#[fiber::func]
-async fn koira() {
-
+    if let Some(val) = val {
+        state.set_int("counter".to_string(), val - 1);
+    }
 }

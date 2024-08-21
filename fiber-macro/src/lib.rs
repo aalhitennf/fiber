@@ -65,18 +65,16 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
 
-    // Function name
-    let fn_name = &input.sig.ident;
-    // Function inputs
-    // let fn_inputs = &input.sig.inputs;
+    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async!");
 
+    let fn_name = &input.sig.ident;
+    let fn_inputs = &input.sig.inputs;
+
+    assert!(fn_inputs.len() == 1, "fiber::func can only have one argument!");
     assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
 
-    // Function output
-    let fn_output = &input.sig.output;
-
     assert!(
-        matches!(fn_output, ReturnType::Default),
+        matches!(&input.sig.output, ReturnType::Default),
         "This function cannot return a value. Use use_context to access state."
     );
 
@@ -84,14 +82,14 @@ pub fn func(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let fn_name_string = fn_name.to_string();
     let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
-    let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::mixed_site());
+    let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::call_site());
 
     quote! {
-        fn #fn_name_wrapper() {
+        fn #fn_name_wrapper(state: fiber::StateCtx) {
             #scope
         }
 
-        fn #fn_name() -> (String, fn()) {
+        fn #fn_name() -> (String, fn(StateCtx)) {
             (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
         }
 

@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -7,17 +8,30 @@ use fml::{AttributeValue, VariableType};
 
 #[derive(Default)]
 pub struct State {
-    pub strings: DashMap<String, RwSignal<String>>,
-    pub ints: DashMap<String, RwSignal<i64>>,
-    pub floats: DashMap<String, RwSignal<f64>>,
+    pub(crate) strings: DashMap<String, RwSignal<String>>,
+    pub(crate) ints: DashMap<String, RwSignal<i64>>,
+    pub(crate) floats: DashMap<String, RwSignal<f64>>,
     pub(crate) fns: DashMap<String, FnWrap>,
 }
 
-pub type StateCtx = Arc<State>;
+#[derive(Clone)]
+pub struct StateCtx(Arc<State>);
 
-fn print_state() {
-    let state = use_context::<StateCtx>().unwrap();
+impl StateCtx {
+    pub fn new(state: State) -> Self {
+        Self(Arc::new(state))
+    }
+}
 
+impl Deref for StateCtx {
+    type Target = State;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn print_state(state: StateCtx) {
     log::info!("State\n");
 
     log::info!("String ({}):", state.strings.len());
@@ -52,7 +66,7 @@ impl From<FnPointer> for FnWrap {
     }
 }
 
-pub type FnPointer = fn();
+pub type FnPointer = fn(StateCtx);
 
 impl State {
     #[must_use]
