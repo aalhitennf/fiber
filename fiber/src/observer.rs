@@ -3,8 +3,8 @@ use std::path::Path;
 use crossbeam_channel::Sender;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
-pub struct FileObserver {
-    pub watcher: RecommendedWatcher,
+pub(crate) struct FileObserver {
+    _watcher: RecommendedWatcher,
 }
 
 impl FileObserver {
@@ -38,6 +38,6 @@ impl FileObserver {
 
         watcher.watch(path, mode)?;
 
-        Ok(FileObserver { watcher })
+        Ok(FileObserver { _watcher: watcher })
     }
 }
