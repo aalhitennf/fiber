@@ -10,15 +10,14 @@ pub mod signal;
 pub mod state;
 pub mod theme;
 
-use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use floem::ext_event::{create_ext_action, create_signal_from_channel};
-use floem::reactive::{create_effect, provide_context, untrack, use_context, RwSignal};
+use floem::ext_event::create_signal_from_channel;
+use floem::reactive::{create_effect, provide_context, untrack, use_context, RwSignal, Scope};
 use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
@@ -143,7 +142,7 @@ impl App {
     pub fn run(self) {
         self.set_logging();
 
-        let state = Arc::new(self.state);
+        let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
         provide_context(state);
@@ -153,7 +152,7 @@ impl App {
             move || {
                 // TODO This probably don't need to be dyn_view on release build and could be
                 // TODO scoped down to specific views/nodes
-                dyn_view(move || build::source(&include_str!("../../examples/counter/fiber/main.fml")))
+                dyn_view(move || builders::source(&include_str!("../../examples/async_tokio/fiber/main.fml")))
                     .css(&["body"])
                     .debug_name("Body")
             },
@@ -227,20 +226,26 @@ impl<T> AsyncTask<T>
 where
     T: Send + Clone + Debug + 'static,
 {
+    // TODO This most likely leaks memory every time called
     pub fn new<F, U>(future: F, callback: U) -> Self
     where
         F: Future<Output = T> + 'static + Send,
         U: Fn(StateCtx, T) + 'static,
     {
-        let (sender, receiver) = crossbeam_channel::unbounded::<T>();
+        let scope = Scope::new();
+
+        let (sender, receiver) = crossbeam_channel::unbounded();
 
         let sig = create_signal_from_channel(receiver);
 
-        create_effect(move |_| {
+        scope.create_effect(move |_| {
             if let Some(value) = sig.get() {
                 let state = use_context::<StateCtx>().unwrap();
                 COUNT.fetch_add(1, Ordering::Relaxed);
                 callback(state, value);
+                // TODO Maybe untracking sig would do somethings here?
+                // TODO No idea if this is necessary
+                scope.dispose();
             }
         });
 
@@ -250,3 +255,9 @@ where
         }
     }
 }
+
+// impl<T> Drop for AsyncTask<T> {
+//     fn drop(&mut self) {
+//         self.future
+//     }
+// }
