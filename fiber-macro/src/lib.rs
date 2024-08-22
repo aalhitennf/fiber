@@ -6,7 +6,7 @@ use proc_macro2::Span;
 use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{parse_macro_input, Data, DeriveInput, FnArg, Ident, ItemFn, PatType, ReturnType, Type};
@@ -123,13 +123,11 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     attrs.retain(|v| v != "debug");
 
-    // assert!(attrs.len() == 1, "You must give callback fn as attribute!");
-
     let callback_name = attrs
         .first()
         .unwrap_or_else(|| panic!("You must give callback fn as attribute!"));
 
-    let callback_fn = Ident::new(&callback_name, Span::call_site());
+    let callback_fn = Ident::new(callback_name, Span::call_site());
     //
     assert!(
         input.sig.asyncness.is_some(),
@@ -139,21 +137,9 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name = &input.sig.ident;
     assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
 
-    // let output = &input.sig.output;
-    let output_ty = match &input.sig.output {
-        ReturnType::Type(_, ty) => ty,
-        _ => panic!("fiber::async_func must have a return type!"),
+    let ReturnType::Type(_, output_ty) = &input.sig.output else {
+        panic!("fiber::async_func must have a return type!")
     };
-    // let (names, types) = parse_inputs(&input.sig.inputs);
-
-    // let injects = quote! {
-    //     #(let #names = floem::reactive::use_context::<#types>().expect(&format!("Context item {} not configured", stringify!(#names)));)*
-    // };
-
-    // assert!(
-    //     matches!(&input.sig.output, ReturnType::Default),
-    //     "This function cannot return a value. Use use_context to access state."
-    // );
 
     let fn_name_string = fn_name.to_string();
     let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
@@ -182,7 +168,7 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-fn parse_inputs(inputs: &Punctuated<FnArg, Comma>) -> (Vec<&Ident>, Vec<&Box<Type>>) {
+fn parse_inputs(inputs: &Punctuated<FnArg, Comma>) -> (Vec<&Ident>, Vec<&Type>) {
     let mut names = Vec::with_capacity(inputs.len());
     let mut types = Vec::with_capacity(inputs.len());
 
@@ -191,12 +177,12 @@ fn parse_inputs(inputs: &Punctuated<FnArg, Comma>) -> (Vec<&Ident>, Vec<&Box<Typ
             FnArg::Typed(PatType { pat, ty, .. }) => {
                 if let syn::Pat::Ident(ident) = &**pat {
                     names.push(&ident.ident);
-                    types.push(ty);
+                    types.push(&**ty);
                 } else {
                     panic!("Only named arguments are allowed in fiber::func");
                 }
             }
-            _ => panic!("Only named arguments are allowed in fiber::func"),
+            FnArg::Receiver(_) => panic!("Only named arguments are allowed in fiber::func"),
         }
     }
 

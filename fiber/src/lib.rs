@@ -14,10 +14,9 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use floem::ext_event::create_signal_from_channel;
-use floem::reactive::{create_effect, provide_context, untrack, use_context, RwSignal, Scope};
+use floem::reactive::{create_effect, provide_context, use_context, RwSignal, Scope};
 use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
@@ -37,6 +36,12 @@ pub struct App {
     log: bool,
     path: PathBuf,
     state: State,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        App::new()
+    }
 }
 
 impl App {
@@ -163,50 +168,15 @@ impl App {
     }
 }
 
-// pub fn spawn<T: Send + 'static>(f: impl Future<Output = T> + Send + 'static) {
-//     tokio::task::spawn(f);
-// }
-
-// pub fn task_runner<T, F, U>(task: F, updater: U)
-// where
-//     T: Send + Clone + 'static,
-//     F: Future<Output = T> + Send + 'static,
-//     U: FnOnce(StateCtx, T) + Copy + 'static,
-// {
-//     let (sender, receiver) = crossbeam_channel::unbounded::<T>();
-//     let sig = create_signal_from_channel(receiver);
-
-//     create_effect(move |_| {
-//         if let Some(value) = sig.get() {
-//             let state = use_context::<StateCtx>().unwrap();
-//             updater(state, value);
-//         }
-//     });
-
-//     let task_wrap = async move {
-//         let value = task.await;
-//         sender.send(value).unwrap();
-//     };
-
-//     tokio::spawn(task_wrap);
-// }
-
 pub fn run_task<T>(task: AsyncTask<T>)
 where
     T: Send + Clone + 'static,
-    // F: Future<Output = T> + Send + 'static,
-    // U: FnOnce(StateCtx, T) + Copy + 'static,
 {
-    // create_effect(move |_| {
-    //     if let Some(value) = sig.get() {
-    //         let state = use_context::<StateCtx>().unwrap();
-    //         (task.callback)(state, value);
-    //     }
-    // });
-
     let task_wrap = async move {
         let value = task.future.await;
-        task.sender.send(value).unwrap();
+        if let Err(e) = task.sender.send(value) {
+            log::error!("AsyncTask failed to return value: {e}");
+        }
     };
 
     tokio::spawn(task_wrap);
@@ -220,17 +190,17 @@ where
     pub(crate) future: Pin<Box<dyn Future<Output = T> + Send>>,
 }
 
-static COUNT: AtomicUsize = AtomicUsize::new(0);
-
 impl<T> AsyncTask<T>
 where
     T: Send + Clone + Debug + 'static,
 {
     // TODO This most likely leaks memory every time called
+    /// # Panics
+    /// Panics if `StateCtx` not set (never)
     pub fn new<F, U>(future: F, callback: U) -> Self
     where
         F: Future<Output = T> + 'static + Send,
-        U: Fn(StateCtx, T) + 'static,
+        U: Fn(&StateCtx, T) + 'static,
     {
         let scope = Scope::new();
 
@@ -241,8 +211,8 @@ where
         scope.create_effect(move |_| {
             if let Some(value) = sig.get() {
                 let state = use_context::<StateCtx>().unwrap();
-                COUNT.fetch_add(1, Ordering::Relaxed);
-                callback(state, value);
+
+                callback(&state, value);
                 // TODO Maybe untracking sig would do somethings here?
                 // TODO No idea if this is necessary
                 scope.dispose();

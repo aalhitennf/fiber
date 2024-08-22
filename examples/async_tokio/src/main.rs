@@ -7,7 +7,7 @@ async fn main() {
         .run();
 }
 
-fn increase_delayed_callback(state: StateCtx, value: i64) {
+fn increase_delayed_callback(state: &StateCtx, value: i64) {
     state.update_int("counter", |val| *val += value);
 }
 

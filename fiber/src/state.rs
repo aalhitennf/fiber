@@ -154,9 +154,10 @@ impl State {
     /// Panics if the handler already exists
     pub fn add_handler(&self, (key, f): (String, FnPointer)) {
         let name = key.replace("_fibr_", "");
-        if self.fns.insert(name.clone(), f).is_some() {
-            panic!("Handler already exists: {name}");
-        }
+        assert!(
+            self.fns.insert(name.clone(), f).is_none(),
+            "Handler already exists: {name}"
+        );
     }
 
     pub fn set_var(&self, key: String, value: AttributeValue) {
