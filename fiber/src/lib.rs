@@ -10,10 +10,15 @@ pub mod signal;
 pub mod state;
 pub mod theme;
 
+use std::any::Any;
+use std::fmt::Debug;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use floem::ext_event::create_signal_from_channel;
-use floem::reactive::{create_effect, provide_context, RwSignal};
+use floem::ext_event::{create_ext_action, create_signal_from_channel};
+use floem::reactive::{create_effect, provide_context, untrack, use_context, RwSignal};
 use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
@@ -24,7 +29,7 @@ use theme::{theme_provider, StyleCss, Theme, ThemeOptions};
 mod observer;
 
 // Export macros
-pub use fiber_macro::func;
+pub use fiber_macro::{async_func, func};
 
 // Export common structs
 pub use state::StateCtx;
@@ -50,7 +55,7 @@ impl App {
     /// Panics if given path doesn't exists
     #[must_use]
     pub fn from_path(path: impl AsRef<Path>) -> Self {
-        let path = path.as_ref().canonicalize().expect("Invalid path");
+        let path = path.as_ref().join("fiber").canonicalize().expect("Invalid path");
 
         App {
             log: true,
@@ -156,5 +161,92 @@ impl App {
         );
 
         floem::launch(|| theme_provider);
+    }
+}
+
+// pub fn spawn<T: Send + 'static>(f: impl Future<Output = T> + Send + 'static) {
+//     tokio::task::spawn(f);
+// }
+
+// pub fn task_runner<T, F, U>(task: F, updater: U)
+// where
+//     T: Send + Clone + 'static,
+//     F: Future<Output = T> + Send + 'static,
+//     U: FnOnce(StateCtx, T) + Copy + 'static,
+// {
+//     let (sender, receiver) = crossbeam_channel::unbounded::<T>();
+//     let sig = create_signal_from_channel(receiver);
+
+//     create_effect(move |_| {
+//         if let Some(value) = sig.get() {
+//             let state = use_context::<StateCtx>().unwrap();
+//             updater(state, value);
+//         }
+//     });
+
+//     let task_wrap = async move {
+//         let value = task.await;
+//         sender.send(value).unwrap();
+//     };
+
+//     tokio::spawn(task_wrap);
+// }
+
+pub fn run_task<T>(task: AsyncTask<T>)
+where
+    T: Send + Clone + 'static,
+    // F: Future<Output = T> + Send + 'static,
+    // U: FnOnce(StateCtx, T) + Copy + 'static,
+{
+    // create_effect(move |_| {
+    //     if let Some(value) = sig.get() {
+    //         let state = use_context::<StateCtx>().unwrap();
+    //         (task.callback)(state, value);
+    //     }
+    // });
+
+    let task_wrap = async move {
+        let value = task.future.await;
+        task.sender.send(value).unwrap();
+    };
+
+    tokio::spawn(task_wrap);
+}
+
+pub struct AsyncTask<T>
+where
+    T: Send + Clone + 'static,
+{
+    pub(crate) sender: crossbeam_channel::Sender<T>,
+    pub(crate) future: Pin<Box<dyn Future<Output = T> + Send>>,
+}
+
+static COUNT: AtomicUsize = AtomicUsize::new(0);
+
+impl<T> AsyncTask<T>
+where
+    T: Send + Clone + Debug + 'static,
+{
+    pub fn new<F, U>(future: F, callback: U) -> Self
+    where
+        F: Future<Output = T> + 'static + Send,
+        U: Fn(StateCtx, T) + 'static,
+    {
+        let (sender, receiver) = crossbeam_channel::unbounded::<T>();
+
+        let sig = create_signal_from_channel(receiver);
+
+        create_effect(move |_| {
+            if let Some(value) = sig.get() {
+                let state = use_context::<StateCtx>().unwrap();
+                COUNT.fetch_add(1, Ordering::Relaxed);
+                callback(state, value);
+            }
+        });
+
+        AsyncTask {
+            sender,
+            future: Box::pin(future),
+        }
     }
 }

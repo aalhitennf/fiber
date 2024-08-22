@@ -1,0 +1,13 @@
+[package]
+name = "async_tokio"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fiber = { path = "../../fiber" }
+tokio = { version = "1.39.3", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+    "time",
+] }
+floem = { workspace = true }

@@ -5,6 +5,7 @@ use crossbeam_channel::Sender;
 
 use crate::observer::FileObserver;
 
+#[derive(Clone)]
 pub struct Runtime {
     _observer: Rc<FileObserver>,
     source: String,

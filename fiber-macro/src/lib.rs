@@ -6,7 +6,7 @@ use proc_macro2::Span;
 use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{parse_macro_input, Data, DeriveInput, FnArg, Ident, ItemFn, PatType, ReturnType, Type};
@@ -74,7 +74,7 @@ pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
         quote! { fiber::state::FnPointer }
     };
 
-    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async! (yet)");
+    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async!");
 
     let fn_name = &input.sig.ident;
     assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
@@ -82,7 +82,7 @@ pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
     let (names, types) = parse_inputs(&input.sig.inputs);
 
     let injects = quote! {
-        #(let #names = floem::reactive::use_context::<#types>().unwrap();)*
+        #(let #names = floem::reactive::use_context::<#types>().expect(&format!("Context item {} not configured", stringify!(#names)));)*
     };
 
     assert!(
@@ -90,7 +90,7 @@ pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
         "This function cannot return a value. Use use_context to access state."
     );
 
-    let scope = input.block;
+    let block = input.block;
 
     let fn_name_string = fn_name.to_string();
     let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
@@ -100,14 +100,84 @@ pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
         fn #fn_name_wrapper() {
             #injects
 
-            #scope
+            #block
         }
 
         fn #fn_name() -> (String, #fn_pointer_path) {
             (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
         }
+    }
+    .into()
+}
 
+#[proc_macro_attribute]
+pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemFn);
+    let mut attrs = attr.into_iter().map(|ts| ts.to_string()).collect::<Vec<_>>();
 
+    let fn_pointer_path = if attrs.contains(&"debug".to_string()) {
+        quote! { crate::state::FnPointer }
+    } else {
+        quote! { fiber::state::FnPointer }
+    };
+
+    attrs.retain(|v| v != "debug");
+
+    // assert!(attrs.len() == 1, "You must give callback fn as attribute!");
+
+    let callback_name = attrs
+        .first()
+        .unwrap_or_else(|| panic!("You must give callback fn as attribute!"));
+
+    let callback_fn = Ident::new(&callback_name, Span::call_site());
+    //
+    assert!(
+        input.sig.asyncness.is_some(),
+        "fiber::async_func must be derived on async function!"
+    );
+
+    let fn_name = &input.sig.ident;
+    assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
+
+    // let output = &input.sig.output;
+    let output_ty = match &input.sig.output {
+        ReturnType::Type(_, ty) => ty,
+        _ => panic!("fiber::async_func must have a return type!"),
+    };
+    // let (names, types) = parse_inputs(&input.sig.inputs);
+
+    // let injects = quote! {
+    //     #(let #names = floem::reactive::use_context::<#types>().expect(&format!("Context item {} not configured", stringify!(#names)));)*
+    // };
+
+    // assert!(
+    //     matches!(&input.sig.output, ReturnType::Default),
+    //     "This function cannot return a value. Use use_context to access state."
+    // );
+
+    let fn_name_string = fn_name.to_string();
+    let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
+    let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::call_site());
+
+    let block = input.block;
+
+    quote! {
+        fn #fn_name_wrapper() {
+            let task = async {
+                #block
+            };
+
+            let task = fiber::AsyncTask::<#output_ty>::new(
+                task,
+                #callback_fn,
+            );
+
+            fiber::run_task(task);
+        }
+
+        fn #fn_name() -> (String, #fn_pointer_path) {
+            (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
+        }
     }
     .into()
 }

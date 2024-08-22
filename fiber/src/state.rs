@@ -11,7 +11,7 @@ pub struct State {
     pub(crate) strings: DashMap<String, RwSignal<String>>,
     pub(crate) ints: DashMap<String, RwSignal<i64>>,
     pub(crate) floats: DashMap<String, RwSignal<f64>>,
-    pub(crate) fns: DashMap<String, FnWrap>,
+    pub(crate) fns: DashMap<String, FnPointer>,
 }
 
 #[derive(Clone)]
@@ -52,20 +52,20 @@ fn dbg_print_state(state: StateCtx) {
 
     log::info!("\nFns ({}):", state.fns.len());
     for entry in &state.fns {
-        log::info!("\t{} = {:?}", entry.key(), entry.value());
+        log::info!("\t{} = Fn", entry.key());
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct FnWrap {
-    f: FnPointer,
-}
+// #[derive(Debug, Clone, Copy)]
+// pub struct FnWrap {
+//     f: FnPointer,
+// }
 
-impl From<FnPointer> for FnWrap {
-    fn from(f: FnPointer) -> Self {
-        Self { f }
-    }
-}
+// impl From<FnPointer> for FnWrap {
+//     fn from(f: FnPointer) -> Self {
+//         Self { f }
+//     }
+// }
 
 pub type FnPointer = fn();
 
@@ -147,14 +147,14 @@ impl State {
     }
 
     pub fn set_fn(&self, key: String, f: FnPointer) {
-        self.fns.insert(key, FnWrap::from(f));
+        self.fns.insert(key, f);
     }
 
     /// # Panics
     /// Panics if the handler already exists
     pub fn add_handler(&self, (key, f): (String, FnPointer)) {
         let name = key.replace("_fibr_", "");
-        if self.fns.insert(name.clone(), FnWrap::from(f)).is_some() {
+        if self.fns.insert(name.clone(), f).is_some() {
             panic!("Handler already exists: {name}");
         }
     }
@@ -218,7 +218,7 @@ impl State {
 
     #[must_use]
     pub fn get_fn(&self, key: &str) -> Option<FnPointer> {
-        self.fns.get(key).map(|w| w.f)
+        self.fns.get(key).map(|w| *w)
     }
 
     pub fn update_string(&self, key: &str, f: impl FnOnce(&mut String)) {
