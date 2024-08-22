@@ -6,4 +6,5 @@
     </hstack>
 
     <button onclick={dbg_print_state}>Log state</button>
+    <button onclick={exit}>Exit</button>
 </vstack>
