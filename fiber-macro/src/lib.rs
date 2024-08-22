@@ -1,5 +1,6 @@
 #![allow(clippy::missing_panics_doc)]
 
+mod func;
 mod style;
 
 use proc_macro2::Span;
@@ -7,9 +8,7 @@ use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::token::Comma;
-use syn::{parse_macro_input, Data, DeriveInput, FnArg, Ident, ItemFn, PatType, ReturnType, Type};
+use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn, ReturnType};
 
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
@@ -79,7 +78,7 @@ pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
     let fn_name = &input.sig.ident;
     assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
 
-    let (names, types) = parse_inputs(&input.sig.inputs);
+    let (names, types) = func::parse_inputs(&input.sig.inputs);
 
     let injects = quote! {
         #(let #names = floem::reactive::use_context::<#types>().expect(&format!("Context item {} not configured", stringify!(#names)));)*
@@ -166,25 +165,4 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
     .into()
-}
-
-fn parse_inputs(inputs: &Punctuated<FnArg, Comma>) -> (Vec<&Ident>, Vec<&Type>) {
-    let mut names = Vec::with_capacity(inputs.len());
-    let mut types = Vec::with_capacity(inputs.len());
-
-    for input in inputs {
-        match input {
-            FnArg::Typed(PatType { pat, ty, .. }) => {
-                if let syn::Pat::Ident(ident) = &**pat {
-                    names.push(&ident.ident);
-                    types.push(&**ty);
-                } else {
-                    panic!("Only named arguments are allowed in fiber::func");
-                }
-            }
-            FnArg::Receiver(_) => panic!("Only named arguments are allowed in fiber::func"),
-        }
-    }
-
-    (names, types)
 }
