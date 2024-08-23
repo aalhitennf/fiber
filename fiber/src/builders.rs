@@ -91,13 +91,8 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     VariableType::String => {
                         let value = state
                             .get::<String>(name)
-                            .map(move |s| {
-                                s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_else(|| String::new()))
-                            })
-                            .unwrap_or_else(|| {
-                                log::error!("Another unwrap failed");
-                                String::new()
-                            })
+                            .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_default()))
+                            .unwrap_or_default()
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
@@ -105,11 +100,8 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     VariableType::Integer => {
                         let value = state
                             .get::<i64>(name)
-                            .map(move |s| s.with(|v| v.downcast_ref::<i64>().cloned().unwrap_or_else(|| 0))) // TODO Ugly
-                            .unwrap_or_else(|| {
-                                log::error!("Another unwrap failed");
-                                0
-                            })
+                            .map(move |s| s.with(|v| v.downcast_ref::<i64>().copied().unwrap_or_default())) // TODO Ugly
+                            .unwrap_or_default()
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
@@ -117,11 +109,8 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     VariableType::Float => {
                         let value = state
                             .get::<f64>(name)
-                            .map(move |s| s.with(|v| v.downcast_ref::<f64>().cloned().unwrap_or_else(|| 0.0))) // TODO Ugly
-                            .unwrap_or_else(|| {
-                                log::error!("Another unwrap failed");
-                                0.0
-                            })
+                            .map(move |s| s.with(|v| v.downcast_ref::<f64>().copied().unwrap_or_default())) // TODO Ugly
+                            .unwrap_or_default()
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
@@ -183,7 +172,7 @@ fn element_to_anyview(elem: &Element) -> AnyView {
             let name = &value_var_name.unwrap_or_else(|| elem_value_key.clone());
 
             // TODO Probably very terrible
-            if let Some(sig) = state.get::<String>(&name) {
+            if let Some(sig) = state.get::<String>(name) {
                 let s = (&sig as &dyn Any).downcast_ref::<RwSignal<String>>().unwrap();
                 text_input(*s).into_any()
             } else {
