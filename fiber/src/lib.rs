@@ -21,7 +21,7 @@ use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
 use runtime::Runtime;
-use state::{FnPointer, State, Stateful, StatefulCtx};
+use state::{FnPointer, State};
 use theme::{theme_provider, StyleCss, Theme, ThemeOptions};
 
 mod observer;
@@ -77,14 +77,6 @@ impl App {
     #[must_use]
     pub fn handlers(mut self, handlers: Vec<(String, FnPointer)>) -> Self {
         self.handlers = Some(handlers);
-        self
-    }
-
-    pub fn state<S>(self, state: S) -> Self
-    where
-        S: Stateful + 'static,
-    {
-        provide_context(StatefulCtx::new(state));
         self
     }
 

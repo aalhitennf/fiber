@@ -2,61 +2,15 @@ use std::any::Any;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::path::Path;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use dashmap::DashMap;
 use floem::reactive::RwSignal;
 use fml::VariableType;
 
-pub trait Stateful {}
-
-pub struct StatefulCtx<S>(Rc<S>);
-
-impl<S> Clone for StatefulCtx<S> {
-    fn clone(&self) -> Self {
-        StatefulCtx(self.0.clone())
-    }
-}
-
-impl<S> StatefulCtx<S>
-where
-    S: Stateful,
-{
-    pub fn new(state: S) -> Self {
-        Self(Rc::new(state))
-    }
-}
-
-// impl<S> Default for StatefulCtx<S>
-// where
-//     S: Stateful,
-// {
-//     fn default() -> Self {
-//         Self::new(S::default())
-//     }
-// }
-
-impl<S> Deref for StatefulCtx<S>
-where
-    S: Stateful,
-{
-    type Target = S;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 #[derive(Default)]
 pub struct State {
-    // pub(crate) strings: DashMap<String, RwSignal<String>>,
-    // pub(crate) ints: DashMap<String, RwSignal<i64>>,
-    // pub(crate) floats: DashMap<String, RwSignal<f64>>,
     pub(crate) fns: DashMap<String, FnPointer>,
-    // pub(crate) variables: DashMap<String, RwSignal<Rc<dyn Any>>>,
-    // // TODO
-    // Key can be struct with fields name and Original type as String
     pub(crate) variables: DashMap<VariableKey, RwSignal<Box<dyn Any>>>,
 }
 
