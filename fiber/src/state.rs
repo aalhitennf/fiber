@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use dashmap::DashMap;
 use floem::reactive::RwSignal;
@@ -37,11 +37,11 @@ impl VariableKey {
 }
 
 #[derive(Clone)]
-pub struct StateCtx(Arc<State>);
+pub struct StateCtx(Rc<State>);
 
 impl StateCtx {
     pub fn new(state: State) -> Self {
-        Self(Arc::new(state))
+        Self(Rc::new(state))
     }
 }
 
@@ -86,7 +86,7 @@ impl State {
     pub(crate) fn read_vars(&mut self, path: &Path) {
         self.add_handler(dbg_print_state());
 
-        let Ok(content) = std::fs::read_to_string(&path) else {
+        let Ok(content) = std::fs::read_to_string(path) else {
             log::error!("No vars file: {path:?}");
             return;
         };
