@@ -178,18 +178,6 @@ fn element_to_anyview(elem: &Element) -> AnyView {
             } else {
                 text_input(RwSignal::new(format!("Var {elem_value_key} not found"))).into_any()
             }
-
-            // .unwrap_or(RwSignal::new(String::new()));
-            // .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_else(|| String::new()))) // TODO Ugly
-            // .unwrap_or_else(|| {
-            //     log::error!("Another unwrap failed");
-            //     String::new()
-            // })
-            // .to_string();
-
-            // let buffer = state
-            //     .get_string(&value_var_name.unwrap_or_else(|| elem_value_key.clone()))
-            //     .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
         }
         _ => text("other").into_any(),
     }
