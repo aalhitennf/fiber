@@ -28,7 +28,7 @@ impl Runtime {
         })
     }
 
-    pub(crate) fn update_source(&mut self) {
+    pub fn update_source(&mut self) {
         match std::fs::read_to_string(self.path.join("main.fml")) {
             Ok(new_source) => self.source = new_source,
             Err(e) => {
@@ -37,7 +37,7 @@ impl Runtime {
         }
     }
 
-    pub(crate) fn source(&self) -> &str {
+    pub fn source(&self) -> &str {
         &self.source
     }
 }
