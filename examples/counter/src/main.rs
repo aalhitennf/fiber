@@ -6,12 +6,12 @@ fn main() {
         .run();
 }
 
-#[fiber::func]
+#[fiber::task]
 fn increase_counter(state: StateCtx) {
     state.update::<i64>("counter", |val| *val += 1);
 }
 
-#[fiber::func]
+#[fiber::task]
 fn decrease_counter(state: StateCtx) {
     state.update::<i64>("counter", |val| *val -= 1);
 }

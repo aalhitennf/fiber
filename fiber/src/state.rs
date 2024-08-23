@@ -53,7 +53,7 @@ impl Deref for StateCtx {
     }
 }
 
-#[fiber_macro::func(debug)]
+#[fiber_macro::task(debug)]
 fn dbg_print_state(state: StateCtx) {
     log::info!("State");
 

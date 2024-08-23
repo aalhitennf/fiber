@@ -1,14 +1,13 @@
 #![allow(clippy::missing_panics_doc)]
 
-mod func;
 mod style;
+mod task;
 
-use proc_macro2::Span;
 use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn, ReturnType};
+use syn::{parse_macro_input, Data, DeriveInput, ItemFn};
 
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
@@ -63,54 +62,7 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn func(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(item as ItemFn);
-    let attrs = attr.into_iter().map(|ts| ts.to_string()).collect::<Vec<_>>();
-
-    let fn_pointer_path = if attrs.contains(&"debug".to_string()) {
-        quote! { crate::state::FnPointer }
-    } else {
-        quote! { fiber::state::FnPointer }
-    };
-
-    assert!(input.sig.asyncness.is_none(), "fiber::func cannot be async!");
-
-    let fn_name = &input.sig.ident;
-    assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
-
-    let (names, types) = func::parse_inputs(&input.sig.inputs);
-
-    let injects = quote! {
-        #(let #names = floem::reactive::use_context::<#types>().expect(&format!("Context item {} not configured", stringify!(#names)));)*
-    };
-
-    assert!(
-        matches!(&input.sig.output, ReturnType::Default),
-        "This function cannot return a value. Use use_context to access state."
-    );
-
-    let block = input.block;
-
-    let fn_name_string = fn_name.to_string();
-    let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
-    let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::call_site());
-
-    quote! {
-        fn #fn_name_wrapper() {
-            #injects
-
-            #block
-        }
-
-        fn #fn_name() -> (String, #fn_pointer_path) {
-            (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
-        }
-    }
-    .into()
-}
-
-#[proc_macro_attribute]
-pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let mut attrs = attr.into_iter().map(|ts| ts.to_string()).collect::<Vec<_>>();
 
@@ -122,47 +74,9 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     attrs.retain(|v| v != "debug");
 
-    let callback_name = attrs
-        .first()
-        .unwrap_or_else(|| panic!("You must give callback fn as attribute!"));
-
-    let callback_fn = Ident::new(callback_name, Span::call_site());
-    //
-    assert!(
-        input.sig.asyncness.is_some(),
-        "fiber::async_func must be derived on async function!"
-    );
-
-    let fn_name = &input.sig.ident;
-    assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
-
-    let ReturnType::Type(_, output_ty) = &input.sig.output else {
-        panic!("fiber::async_func must have a return type!")
-    };
-
-    let fn_name_string = fn_name.to_string();
-    let fn_name_wrapper_string = format!("_fibr_{fn_name_string}");
-    let fn_name_wrapper = Ident::new(&fn_name_wrapper_string, Span::call_site());
-
-    let block = input.block;
-
-    quote! {
-        fn #fn_name_wrapper() {
-            let task = async {
-                #block
-            };
-
-            let task = fiber::AsyncTask::<#output_ty>::new(
-                task,
-                #callback_fn,
-            );
-
-            fiber::run_task(task);
-        }
-
-        fn #fn_name() -> (String, #fn_pointer_path) {
-            (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
-        }
+    if input.sig.asyncness.is_some() {
+        task::build_async_task(&input, &attrs, &fn_pointer_path)
+    } else {
+        task::build_sync_task(&input, &fn_pointer_path)
     }
-    .into()
 }

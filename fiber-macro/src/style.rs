@@ -38,17 +38,12 @@ pub fn parse_enum_variant(v: &Variant) -> ParsedVariant<'_> {
         panic!("Key attribute must be string literal");
     };
 
-    let parser = v
-        .attrs
-        .iter()
-        .find(|a| a.path().is_ident("parser"))
-        .map(|a| {
-            a.parse_args::<LitStr>()
-                .ok()
-                .map(|lit| Ident::new(&lit.value(), Span::call_site()))
-        })
-        .unwrap_or_else(|| panic!("Missing convert fn for {ident}"))
-        .expect("Invalid convert fn value");
+    let Some(Ok(parser)) = v.attrs.iter().find(|a| a.path().is_ident("parser")).map(|a| {
+        a.parse_args::<LitStr>()
+            .map(|lit| Ident::new(&lit.value(), Span::call_site()))
+    }) else {
+        panic!("Missing convert fn for {ident}");
+    };
 
     let Some(prop_attr) = v.attrs.iter().find(|a| a.path().is_ident("prop")) else {
         panic!("Missing prop attribute for {ident}");

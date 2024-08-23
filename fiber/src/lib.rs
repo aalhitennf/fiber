@@ -21,7 +21,7 @@ use floem::reactive::{use_context, Scope};
 mod observer;
 
 // Export macros
-pub use fiber_macro::{async_func, func};
+pub use fiber_macro::task;
 
 // Export common structs
 pub use app::App;

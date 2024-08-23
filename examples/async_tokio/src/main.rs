@@ -12,13 +12,13 @@ fn increase_delayed_callback(state: &StateCtx, value: i64) {
     state.update::<i64>("counter", |val| *val += value);
 }
 
-#[fiber::async_func(increase_delayed_callback)]
+#[fiber::task(increase_delayed_callback)]
 async fn increase_delayed() -> i64 {
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     1
 }
 
-#[fiber::func]
+#[fiber::task]
 fn exit() {
     std::process::exit(0);
 }
