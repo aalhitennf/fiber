@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use floem::keyboard::{Key, Modifiers, NamedKey};
 use floem::peniko::Color;
 use floem::reactive::{use_context, RwSignal};
@@ -84,30 +86,42 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     continue;
                 };
 
+                // TODO Ugly maps. Maybe create state function with default as arg or restrict T to impl Default
                 match var.kind {
                     VariableType::String => {
                         let value = state
-                            .get_string(name)
-                            .unwrap_or_else(|| RwSignal::new("String {} not in state".to_string()))
-                            .get()
+                            .get::<String>(name)
+                            .map(move |s| {
+                                s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_else(|| String::new()))
+                            })
+                            .unwrap_or_else(|| {
+                                log::error!("Another unwrap failed");
+                                String::new()
+                            })
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
                     }
                     VariableType::Integer => {
                         let value = state
-                            .get_int(name)
-                            .unwrap_or_else(|| RwSignal::new(0))
-                            .get()
+                            .get::<i64>(name)
+                            .map(move |s| s.with(|v| v.downcast_ref::<i64>().cloned().unwrap_or_else(|| 0))) // TODO Ugly
+                            .unwrap_or_else(|| {
+                                log::error!("Another unwrap failed");
+                                0
+                            })
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
                     }
                     VariableType::Float => {
                         let value = state
-                            .get_float(name)
-                            .unwrap_or_else(|| RwSignal::new(0.0))
-                            .get()
+                            .get::<f64>(name)
+                            .map(move |s| s.with(|v| v.downcast_ref::<f64>().cloned().unwrap_or_else(|| 0.0))) // TODO Ugly
+                            .unwrap_or_else(|| {
+                                log::error!("Another unwrap failed");
+                                0.0
+                            })
                             .to_string();
 
                         content.update(|c| *c = c.replace(var.full_match, &value));
@@ -166,11 +180,27 @@ fn element_to_anyview(elem: &Element) -> AnyView {
         ElementKind::Input => {
             let state = use_context::<StateCtx>().unwrap();
 
-            let buffer = state
-                .get_string(&value_var_name.unwrap_or_else(|| elem_value_key.clone()))
-                .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
+            let name = &value_var_name.unwrap_or_else(|| elem_value_key.clone());
 
-            text_input(buffer).into_any()
+            // TODO Probably very terrible
+            if let Some(sig) = state.get::<String>(&name) {
+                let s = (&sig as &dyn Any).downcast_ref::<RwSignal<String>>().unwrap();
+                text_input(*s).into_any()
+            } else {
+                text_input(RwSignal::new(format!("Var {elem_value_key} not found"))).into_any()
+            }
+
+            // .unwrap_or(RwSignal::new(String::new()));
+            // .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_else(|| String::new()))) // TODO Ugly
+            // .unwrap_or_else(|| {
+            //     log::error!("Another unwrap failed");
+            //     String::new()
+            // })
+            // .to_string();
+
+            // let buffer = state
+            //     .get_string(&value_var_name.unwrap_or_else(|| elem_value_key.clone()))
+            //     .unwrap_or_else(|| RwSignal::new(format!("Var {elem_value_key} not found")));
         }
         _ => text("other").into_any(),
     }

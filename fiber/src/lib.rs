@@ -21,21 +21,21 @@ use floem::views::{dyn_view, Decorators};
 use floem::IntoView;
 use log::LevelFilter;
 use runtime::Runtime;
-use state::{FnPointer, State};
+use state::{FnPointer, State, Stateful, StatefulCtx};
 use theme::{theme_provider, StyleCss, Theme, ThemeOptions};
 
 mod observer;
 
 // Export macros
-pub use fiber_macro::{async_func, func};
+pub use fiber_macro::{async_func, func, Stateful};
 
 // Export common structs
 pub use state::StateCtx;
 
 pub struct App {
-    log: bool,
     path: PathBuf,
     state: State,
+    handlers: Option<Vec<(String, FnPointer)>>,
 }
 
 impl Default for App {
@@ -49,10 +49,16 @@ impl App {
     pub fn new() -> Self {
         let path = PathBuf::from("./fiber");
         App {
-            log: true,
-            state: State::new(&path),
+            state: State::default(),
             path,
+            handlers: None,
         }
+    }
+
+    #[must_use]
+    pub fn enable_logging(self) -> Self {
+        enable_logging();
+        self
     }
 
     /// # Panics
@@ -62,46 +68,37 @@ impl App {
         let path = path.as_ref().join("fiber").canonicalize().expect("Invalid path");
 
         App {
-            log: true,
-            state: State::new(&path),
+            state: State::default(),
             path,
+            handlers: None,
         }
     }
 
     #[must_use]
-    pub fn log(mut self, v: bool) -> Self {
-        self.log = v;
+    pub fn handlers(mut self, handlers: Vec<(String, FnPointer)>) -> Self {
+        self.handlers = Some(handlers);
         self
     }
 
-    fn set_logging(&self) {
-        if self.log {
-            env_logger::builder()
-                .filter_module("wgpu_hal", LevelFilter::Error)
-                .filter_module("wgpu_core", LevelFilter::Error)
-                .filter_module("naga", LevelFilter::Error)
-                .filter_module("floem_cosmic_text", LevelFilter::Error)
-                .filter_level(LevelFilter::Info)
-                .init();
-
-            log::info!("Logging OK");
-        }
-    }
-
-    #[must_use]
-    pub fn handlers(self, handlers: Vec<(String, FnPointer)>) -> Self {
-        for h in handlers {
-            self.state.add_handler(h);
-        }
-
+    pub fn state<S>(self, state: S) -> Self
+    where
+        S: Stateful + 'static,
+    {
+        provide_context(StatefulCtx::new(state));
         self
     }
 
     /// # Panics
     /// Panics if creating Runtime fails
     #[cfg(debug_assertions)]
-    pub fn run(self) {
-        self.set_logging();
+    pub fn run(mut self) {
+        self.state.read_vars(&self.path.join("main.vars"));
+
+        if let Some(handlers) = self.handlers.take() {
+            for h in handlers {
+                self.state.add_handler(h);
+            }
+        }
 
         let (sender, receiver) = crossbeam_channel::unbounded();
 
@@ -144,8 +141,14 @@ impl App {
 
     /// # Panics
     #[cfg(not(debug_assertions))]
-    pub fn run(self) {
-        self.set_logging();
+    pub fn run(mut self) {
+        self.state.read_vars(&self.path.join("main.vars"));
+
+        if let Some(handlers) = self.handlers.take() {
+            for h in handlers {
+                self.state.add_handler(h);
+            }
+        }
 
         let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
@@ -157,7 +160,7 @@ impl App {
             move || {
                 // TODO This probably don't need to be dyn_view on release build and could be
                 // TODO scoped down to specific views/nodes
-                dyn_view(move || builders::source(&include_str!("../../examples/async_tokio/fiber/main.fml")))
+                dyn_view(move || builders::source(&include_str!("../../examples/stateful/fiber/main.fml")))
                     .css(&["body"])
                     .debug_name("Body")
             },
@@ -179,7 +182,7 @@ where
         }
     };
 
-    tokio::spawn(task_wrap);
+    tokio::task::spawn(task_wrap);
 }
 
 pub struct AsyncTask<T>
@@ -231,3 +234,15 @@ where
 //         self.future
 //     }
 // }
+
+fn enable_logging() {
+    env_logger::builder()
+        .filter_module("wgpu_hal", LevelFilter::Error)
+        .filter_module("wgpu_core", LevelFilter::Error)
+        .filter_module("naga", LevelFilter::Error)
+        .filter_module("floem_cosmic_text", LevelFilter::Error)
+        .filter_level(LevelFilter::Info)
+        .init();
+
+    log::info!("Logging enabled");
+}

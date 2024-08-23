@@ -8,10 +8,10 @@ fn main() {
 
 #[fiber::func]
 fn increase_counter(state: StateCtx) {
-    state.update_int("counter", |val| *val += 1);
+    state.update::<i64>("counter", |val| *val += 1);
 }
 
 #[fiber::func]
 fn decrease_counter(state: StateCtx) {
-    state.update_int("counter", |val| *val -= 1);
+    state.update::<i64>("counter", |val| *val -= 1);
 }

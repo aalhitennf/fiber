@@ -3,12 +3,13 @@ use fiber::{App, StateCtx};
 #[tokio::main]
 async fn main() {
     App::from_path("./examples/async_tokio")
+        .enable_logging()
         .handlers(vec![increase_delayed(), exit()])
         .run();
 }
 
 fn increase_delayed_callback(state: &StateCtx, value: i64) {
-    state.update_int("counter", |val| *val += value);
+    state.update::<i64>("counter", |val| *val += value);
 }
 
 #[fiber::async_func(increase_delayed_callback)]
