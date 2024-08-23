@@ -7,7 +7,6 @@
 mod app;
 mod builders;
 mod runtime;
-mod signal;
 pub mod state;
 pub mod task;
 mod theme;
