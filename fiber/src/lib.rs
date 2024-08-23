@@ -4,11 +4,11 @@
     clippy::cast_precision_loss
 )]
 
-pub mod builders;
-pub mod runtime;
-pub mod signal;
+mod builders;
+mod runtime;
+mod signal;
 pub mod state;
-pub mod theme;
+mod theme;
 
 use std::fmt::Debug;
 use std::future::Future;

@@ -1,6 +1,5 @@
 pub mod parser;
 
-use std::collections::hash_map::Iter;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -15,14 +14,13 @@ use parser::{Selector, StyleBlock, StyleParser};
 
 use crate::observer::FileObserver;
 
-#[derive(Clone, Copy, Debug)]
-pub enum ColorVariant {
-    Normal,
-    Success,
-    Warn,
-    Alert,
-    Ghost,
-}
+// pub enum ColorVariant {
+//     Normal,
+//     Success,
+//     Warn,
+//     Alert,
+//     Ghost,
+// }
 
 pub trait StyleCss: View {
     #[must_use]
@@ -173,16 +171,16 @@ impl Theme {
     ///
     /// Will return `Err` if `path` does not exist or the user does not have
     /// permission to read it.
-    pub fn change_path<P: AsRef<Path>>(&mut self, new_path: P) -> Result<(), Box<dyn std::error::Error>> {
-        let new = Self::from_path(new_path)?;
-        let _ = std::mem::replace(self, new);
-        Ok(())
-    }
+    // pub fn change_path<P: AsRef<Path>>(&mut self, new_path: P) -> Result<(), Box<dyn std::error::Error>> {
+    //     let new = Self::from_path(new_path)?;
+    //     let _ = std::mem::replace(self, new);
+    //     Ok(())
+    // }
 
-    #[must_use]
-    pub fn get_styles(&self) -> Iter<String, Style> {
-        self.map.iter()
-    }
+    // #[must_use]
+    // pub fn get_styles(&self) -> Iter<String, Style> {
+    //     self.map.iter()
+    // }
 
     #[must_use]
     pub fn get_style(&self, key: &str) -> Option<&Style> {
@@ -196,11 +194,13 @@ impl Theme {
     }
 }
 
+#[allow(unused)]
 pub struct ThemeOptions {
     path: PathBuf,
     overrides: Option<PathBuf>,
 }
 
+#[allow(unused)]
 impl ThemeOptions {
     #[must_use]
     pub fn with_path<P: AsRef<Path>>(path: P) -> Self {
@@ -220,7 +220,7 @@ impl ThemeOptions {
 /// Wraps given view in "body" class and provides `Theme` as context
 /// # Panics
 ///
-/// Panics if `path` doesn't point to a existing folder.
+/// Panics if `path` doesn't point to existing folder.
 pub fn theme_provider<V, F>(child: F, options: ThemeOptions) -> Container
 where
     F: Fn() -> V,
