@@ -27,7 +27,7 @@ use theme::{theme_provider, StyleCss, Theme, ThemeOptions};
 mod observer;
 
 // Export macros
-pub use fiber_macro::{async_func, func, Stateful};
+pub use fiber_macro::{async_func, func};
 
 // Export common structs
 pub use state::StateCtx;

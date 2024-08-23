@@ -8,7 +8,7 @@ use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, ItemFn, ReturnType};
+use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn, ReturnType};
 
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
@@ -162,71 +162,6 @@ pub fn async_func(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         fn #fn_name() -> (String, #fn_pointer_path) {
             (#fn_name_wrapper_string.to_string(), #fn_name_wrapper)
-        }
-    }
-    .into()
-}
-
-#[proc_macro_derive(Stateful)]
-pub fn stateful(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let struct_name = &input.ident;
-
-    let fields = match &input.data {
-        syn::Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => fields,
-            Fields::Unnamed(_) => panic!("Tuple structs are not supported"),
-            Fields::Unit => panic!("Unit structs are not supported"),
-        },
-        _ => panic!("Only structs are supported"),
-    };
-
-    let (idents, types) = fields.named.iter().fold((vec![], vec![]), |mut acc, field| {
-        acc.0.push(&field.ident);
-        acc.1.push(&field.ty);
-        acc
-    });
-
-    // let maps = fields.named.iter().map(|field| {
-    //     // let key = &field.ident;
-    //     let ty = &field.ty;
-    //     let map_ident = ty.to_token_stream().to_string().to_lowercase();
-    //     let map_ident = Ident::new(&map_ident, Span::call_site());
-
-    //     quote! {
-    //         #map_ident: std::collections::HashMap<String, floem::reactive::RwSignal<#ty>>,
-    //     }
-    // });
-
-    quote! {
-            // #(#idents: floem::reactive::RwSignal<#types>,)*
-        pub struct MagicalState {
-            #(#idents: floem::reactive::RwSignal<#types>,)*
-        }
-
-        impl fiber::state::Stateful for MagicalState {
-
-        }
-
-                    // #(stringify!(#idents) => Some(self.#idents.cloned()),)*
-        // impl MagicalState {
-        //     pub fn get_field<T>(&self, key: &str) -> Option<floem::reactive::RwSignal<T>> {
-        //         match key {
-        //             #(  stringify!(#idents) => Some(self.#idents), )*
-        //             _ => None,
-        //         }
-        //     }
-        // }
-
-        impl #struct_name {
-            pub fn build() -> MagicalState {
-                let default = #struct_name::default();
-
-                MagicalState {
-                    #(#idents: floem::reactive::RwSignal::new(default.#idents),)*
-                }
-            }
         }
     }
     .into()
