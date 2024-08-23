@@ -34,12 +34,12 @@ pub(crate) fn build_async_task(
                 #block
             };
 
-            let task = fiber::AsyncTask::<#output_ty>::new(
+            let task = fiber::task::AsyncTask::<#output_ty>::new(
                 task,
                 #callback_fn,
             );
 
-            fiber::run_task(task);
+            fiber::task::spawn(task);
         }
 
         fn #fn_name() -> (String, #fn_pointer_path) {
