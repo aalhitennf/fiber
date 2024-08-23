@@ -47,7 +47,7 @@ fn iter_ast(node: &Node, buf: &mut String, depth: &mut usize) {
             }
 
             buf.push('\n');
-        },
+        }
     }
 }
 
