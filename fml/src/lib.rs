@@ -6,7 +6,8 @@ mod parser;
 
 pub use lexer::{Lexer, Token, TokenKind};
 pub use parser::{
-    Attribute, AttributeValue, Element, ElementKind, Node, Parser, TextElement, VariableName, VariableType,
+    Attribute, AttributeValue, Element, ElementKind, Node, Parser, TextElement, VariableName,
+    VariableType,
 };
 
 /// # Errors

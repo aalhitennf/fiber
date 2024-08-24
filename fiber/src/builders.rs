@@ -6,8 +6,8 @@ use floem::reactive::{use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_view, empty, h_stack, h_stack_from_iter, label, stack_from_iter, text, text_input,
-    v_stack_from_iter, Decorators,
+    button, container, dyn_view, empty, h_stack, h_stack_from_iter, label, stack_from_iter, text,
+    text_input, v_stack_from_iter, Decorators,
 };
 use floem::{AnyView, IntoView, View};
 use fml::{Attribute, AttributeValue, Element, ElementKind, Node, VariableName, VariableType};
@@ -31,7 +31,9 @@ pub(crate) fn source(source: &str) -> impl View {
     log::info!("View built in {}ms", end.as_millis());
 
     let id = view.id();
-    view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| id.inspect())
+    view.on_key_up(Key::Named(NamedKey::F11), Modifiers::empty(), move |_| {
+        id.inspect()
+    })
 }
 
 fn node(node: &Node) -> AnyView {
@@ -86,7 +88,10 @@ fn attr_to_style<'a>(attr: &'a Attribute<'a>, s: Style) -> Style {
 
 fn build_root(elem: &Element) -> AnyView {
     let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
-    container(children).style(Style::size_full).css(&["root"]).into_any()
+    container(children)
+        .style(Style::size_full)
+        .css(&["root"])
+        .into_any()
 }
 
 fn build_box(elem: &Element) -> AnyView {
@@ -122,7 +127,9 @@ fn build_label(elem: &Element) -> AnyView {
             VariableType::String => {
                 let value = state
                     .get::<String>(name)
-                    .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_default()))
+                    .map(move |s| {
+                        s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_default())
+                    })
                     .unwrap_or_default()
                     .to_string();
 
@@ -203,7 +210,9 @@ fn build_input(elem: &Element) -> AnyView {
 
     // TODO Probably very terrible
     if let Some(sig) = state.get::<String>(&name) {
-        let s = (&sig as &dyn Any).downcast_ref::<RwSignal<String>>().unwrap();
+        let s = (&sig as &dyn Any)
+            .downcast_ref::<RwSignal<String>>()
+            .unwrap();
         text_input(*s).into_any()
     } else {
         text_input(RwSignal::new(format!("Var {name} not found"))).into_any()

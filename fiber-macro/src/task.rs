@@ -16,7 +16,10 @@ pub(crate) fn build_async_task(
     let callback_fn = Ident::new(callback_name, Span::call_site());
 
     let fn_name = &input.sig.ident;
-    assert!(fn_name != "main", "fiber::func cannot be derived on main function!");
+    assert!(
+        fn_name != "main",
+        "fiber::func cannot be derived on main function!"
+    );
 
     let ReturnType::Type(_, output_ty) = &input.sig.output else {
         panic!("fiber::async_func must have a return type!")
@@ -49,7 +52,10 @@ pub(crate) fn build_async_task(
     .into()
 }
 
-pub(crate) fn build_sync_task(input: &ItemFn, fn_pointer_path: &proc_macro2::TokenStream) -> proc_macro::TokenStream {
+pub(crate) fn build_sync_task(
+    input: &ItemFn,
+    fn_pointer_path: &proc_macro2::TokenStream,
+) -> proc_macro::TokenStream {
     let fn_name = &input.sig.ident;
 
     let (names, types) = parse_inputs(&input.sig.inputs);

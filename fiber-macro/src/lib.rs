@@ -64,7 +64,10 @@ pub fn derive_style_parser(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
-    let mut attrs = attr.into_iter().map(|ts| ts.to_string()).collect::<Vec<_>>();
+    let mut attrs = attr
+        .into_iter()
+        .map(|ts| ts.to_string())
+        .collect::<Vec<_>>();
 
     let fn_pointer_path = if attrs.contains(&"debug".to_string()) {
         quote! { crate::state::FnPointer }

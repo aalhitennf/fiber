@@ -38,10 +38,15 @@ pub fn parse_enum_variant(v: &Variant) -> ParsedVariant<'_> {
         panic!("Key attribute must be string literal");
     };
 
-    let Some(Ok(parser)) = v.attrs.iter().find(|a| a.path().is_ident("parser")).map(|a| {
-        a.parse_args::<LitStr>()
-            .map(|lit| Ident::new(&lit.value(), Span::call_site()))
-    }) else {
+    let Some(Ok(parser)) = v
+        .attrs
+        .iter()
+        .find(|a| a.path().is_ident("parser"))
+        .map(|a| {
+            a.parse_args::<LitStr>()
+                .map(|lit| Ident::new(&lit.value(), Span::call_site()))
+        })
+    else {
         panic!("Missing convert fn for {ident}");
     };
 

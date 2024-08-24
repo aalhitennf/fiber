@@ -67,7 +67,11 @@ pub enum ElementKind<'a> {
 
 impl<'a> Element<'a> {
     #[must_use]
-    pub fn new(name: &'a str, attributes: Vec<Attribute<'a>>, children: Vec<Node<'a>>) -> Element<'a> {
+    pub fn new(
+        name: &'a str,
+        attributes: Vec<Attribute<'a>>,
+        children: Vec<Node<'a>>,
+    ) -> Element<'a> {
         let kind = match name.as_bytes() {
             b"root" => ElementKind::Root,
             b"box" => ElementKind::Box,
@@ -93,6 +97,9 @@ impl<'a> Element<'a> {
 
     #[must_use]
     pub fn get_attr(&self, name: &str) -> Option<AttributeValue<'_>> {
-        self.attributes.iter().find(|a| a.name == name).map(|a| a.value)
+        self.attributes
+            .iter()
+            .find(|a| a.name == name)
+            .map(|a| a.value)
     }
 }

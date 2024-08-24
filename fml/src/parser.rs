@@ -35,7 +35,10 @@ impl<'a> Parser<'a> {
 
         ElementId::reset();
 
-        Parser { tokens, position: 0 }
+        Parser {
+            tokens,
+            position: 0,
+        }
     }
 
     #[inline]
@@ -73,20 +76,23 @@ impl<'a> Parser<'a> {
                     }
                     self.advance();
 
-                    let value = if let Some(token) = self.current_token() {
-                        match token.kind {
-                            TokenKind::AttributeValue(attr_value) => attr_value,
-                            TokenKind::Variable(var_value) => var_value,
-                            _ => return Err(format!("Expected AttributeValue or Variable: Line {line}, Col {col}")),
-                        }
-                        // if let TokenKind::AttributeValue(attr_value) = token.kind {
-                        //     attr_value
-                        // } else {
-                        //     return Err("Expected AttributeValue".to_string());
-                        // }
-                    } else {
-                        return Err(format!("Expected AttributeValue: Line {line} Col {col}"));
-                    };
+                    let value =
+                        if let Some(token) = self.current_token() {
+                            match token.kind {
+                                TokenKind::AttributeValue(attr_value) => attr_value,
+                                TokenKind::Variable(var_value) => var_value,
+                                _ => return Err(format!(
+                                    "Expected AttributeValue or Variable: Line {line}, Col {col}"
+                                )),
+                            }
+                            // if let TokenKind::AttributeValue(attr_value) = token.kind {
+                            //     attr_value
+                            // } else {
+                            //     return Err("Expected AttributeValue".to_string());
+                            // }
+                        } else {
+                            return Err(format!("Expected AttributeValue: Line {line} Col {col}"));
+                        };
 
                     self.advance();
 
@@ -130,8 +136,12 @@ impl<'a> Parser<'a> {
                                 let end = cap.get(0).unwrap().end();
                                 let range = start + 1..end - 1;
                                 let inner_content = &text[range];
-                                let kind =
-                                    VariableType::from(inner_content.split_once(':').map(|s| s.0).unwrap_or_default()); // Idiotic
+                                let kind = VariableType::from(
+                                    inner_content
+                                        .split_once(':')
+                                        .map(|s| s.0)
+                                        .unwrap_or_default(),
+                                ); // Idiotic
 
                                 Some(VariableRef {
                                     full_match: &text[start..end],
@@ -175,7 +185,10 @@ impl<'a> Parser<'a> {
                     ..
                 }
             ) {
-                return Err(format!("Expected TagStart: Line {} Col {}", token.line, token.col));
+                return Err(format!(
+                    "Expected TagStart: Line {} Col {}",
+                    token.line, token.col
+                ));
             }
         }
 
@@ -215,7 +228,10 @@ impl<'a> Parser<'a> {
                     ..
                 }
             ) {
-                return Err(format!("Expected TagEnd: Line {} Col {}", token.line, token.col));
+                return Err(format!(
+                    "Expected TagEnd: Line {} Col {}",
+                    token.line, token.col
+                ));
             }
         }
 
@@ -224,7 +240,9 @@ impl<'a> Parser<'a> {
         let children = self.parse_children()?;
 
         {
-            let token = self.current_token().ok_or_else(|| "Unexpected EOF".to_string())?;
+            let token = self
+                .current_token()
+                .ok_or_else(|| "Unexpected EOF".to_string())?;
 
             if !matches!(
                 token,
@@ -233,7 +251,10 @@ impl<'a> Parser<'a> {
                     ..
                 }
             ) {
-                return Err(format!("Expected TagClose: Line {} Col {}", token.line, token.col));
+                return Err(format!(
+                    "Expected TagClose: Line {} Col {}",
+                    token.line, token.col
+                ));
             }
         }
 
@@ -245,7 +266,9 @@ impl<'a> Parser<'a> {
         }) = self.current_token()
         {
             if close_name != &name {
-                return Err(format!("Mismatched closing tag: expected {name}, found {close_name}"));
+                return Err(format!(
+                    "Mismatched closing tag: expected {name}, found {close_name}"
+                ));
             }
         } else {
             return Err("Expected TagName".to_string());
@@ -254,7 +277,9 @@ impl<'a> Parser<'a> {
         self.advance();
 
         {
-            let token = self.current_token().ok_or_else(|| "Unexpected EOF".to_string())?;
+            let token = self
+                .current_token()
+                .ok_or_else(|| "Unexpected EOF".to_string())?;
 
             if !matches!(
                 token,
@@ -263,7 +288,10 @@ impl<'a> Parser<'a> {
                     ..
                 }
             ) {
-                return Err(format!("Expected TagEnd: Line {} Col {}", token.line, token.col));
+                return Err(format!(
+                    "Expected TagEnd: Line {} Col {}",
+                    token.line, token.col
+                ));
             }
         }
 

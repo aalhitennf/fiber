@@ -7,15 +7,18 @@ use floem::cosmic_text::Weight;
 use floem::peniko::Color;
 use floem::prop;
 use floem::style::{
-    AlignContentProp, AlignItemsProp, AlignSelf, AspectRatio, Background, BorderBottom, BorderColor, BorderLeft,
-    BorderRadius, BorderRight, BorderTop, BoxShadow, BoxShadowProp, Cursor, CursorColor, CursorStyle, DisplayProp,
-    FlexBasis, FlexDirectionProp, FlexGrow, FlexShrink, FlexWrapProp, FontFamily, FontSize, FontStyle, FontWeight, Gap,
-    Height, InsetBottom, InsetLeft, InsetRight, InsetTop, JustifyContentProp, JustifySelf, LineHeight, MarginBottom,
-    MarginLeft, MarginRight, MarginTop, MaxHeight, MaxWidth, MinHeight, MinWidth, Outline, OutlineColor, PaddingBottom,
-    PaddingLeft, PaddingRight, PaddingTop, PositionProp, Style, TextColor, TextOverflow, TextOverflowProp, Transition,
-    Width, ZIndex,
+    AlignContentProp, AlignItemsProp, AlignSelf, AspectRatio, Background, BorderBottom,
+    BorderColor, BorderLeft, BorderRadius, BorderRight, BorderTop, BoxShadow, BoxShadowProp,
+    Cursor, CursorColor, CursorStyle, DisplayProp, FlexBasis, FlexDirectionProp, FlexGrow,
+    FlexShrink, FlexWrapProp, FontFamily, FontSize, FontStyle, FontWeight, Gap, Height,
+    InsetBottom, InsetLeft, InsetRight, InsetTop, JustifyContentProp, JustifySelf, LineHeight,
+    MarginBottom, MarginLeft, MarginRight, MarginTop, MaxHeight, MaxWidth, MinHeight, MinWidth,
+    Outline, OutlineColor, PaddingBottom, PaddingLeft, PaddingRight, PaddingTop, PositionProp,
+    Style, TextColor, TextOverflow, TextOverflowProp, Transition, Width, ZIndex,
 };
-use floem::taffy::{AlignContent, AlignItems, Display, FlexDirection, FlexWrap, JustifyContent, Position, Size};
+use floem::taffy::{
+    AlignContent, AlignItems, Display, FlexDirection, FlexWrap, JustifyContent, Position, Size,
+};
 use floem::unit::{Pct, Px, PxPct, PxPctAuto};
 use floem::views::scroll::Border;
 use lazy_static::lazy_static;
@@ -163,7 +166,10 @@ impl FromStr for StyleBlock {
             return Err("Class must contain value".into());
         }
 
-        let mut selectors = class.split(',').flat_map(ClassSelector::from_str).collect::<Vec<_>>();
+        let mut selectors = class
+            .split(',')
+            .flat_map(ClassSelector::from_str)
+            .collect::<Vec<_>>();
 
         selectors.sort();
 
@@ -777,7 +783,9 @@ pub fn parse_color(s: impl AsRef<str>) -> Result<Color, StyleError> {
     let s = s.as_ref();
 
     if let Some(matches) = BRACKETS_REGEX.captures(s) {
-        let group = matches.get(1).ok_or(StyleError::new("Invalid color value", s))?;
+        let group = matches
+            .get(1)
+            .ok_or(StyleError::new("Invalid color value", s))?;
 
         if s.starts_with("rgba") {
             return parse_rgba(group.as_str());
@@ -912,7 +920,10 @@ fn parse_box_shadow_2([a, b]: [&str; 2]) -> Result<BoxShadow, StyleError> {
         });
     };
 
-    Err(StyleError::new("Invalid box shadow value", &format!("{a} {b}")))
+    Err(StyleError::new(
+        "Invalid box shadow value",
+        &format!("{a} {b}"),
+    ))
 }
 
 #[inline]
@@ -946,7 +957,10 @@ fn parse_box_shadow_3([a, b, c]: [&str; 3]) -> Result<BoxShadow, StyleError> {
         });
     }
 
-    Err(StyleError::new("Invalid box-shadow value", &format!("{a} {b} {c}")))
+    Err(StyleError::new(
+        "Invalid box-shadow value",
+        &format!("{a} {b} {c}"),
+    ))
 }
 
 #[inline]
@@ -989,15 +1003,22 @@ fn parse_box_shadow_4([a, b, c, d]: [&str; 4]) -> Result<BoxShadow, StyleError> 
         });
     }
 
-    Err(StyleError::new("Invalid box-shadow value", &format!("{a} {b} {c} {d}")))
+    Err(StyleError::new(
+        "Invalid box-shadow value",
+        &format!("{a} {b} {c} {d}"),
+    ))
 }
 
 #[inline]
 fn parse_box_shadow_5([a, b, c, d, e]: [&str; 5]) -> Result<BoxShadow, StyleError> {
     // <h_offset> <v_offset> <blur_radius> <blur_spread> <color>
-    if let (Ok(h_offset), Ok(v_offset), Ok(blur_radius), Ok(blur_spread), Ok(color)) =
-        (parse_px(a), parse_px(b), parse_px(c), parse_px(d), parse_color(e))
-    {
+    if let (Ok(h_offset), Ok(v_offset), Ok(blur_radius), Ok(blur_spread), Ok(color)) = (
+        parse_px(a),
+        parse_px(b),
+        parse_px(c),
+        parse_px(d),
+        parse_color(e),
+    ) {
         return Ok(BoxShadow {
             h_offset: h_offset.into(),
             v_offset: v_offset.into(),
@@ -1008,9 +1029,13 @@ fn parse_box_shadow_5([a, b, c, d, e]: [&str; 5]) -> Result<BoxShadow, StyleErro
     }
 
     // <color> <h_offset> <v_offset> <blur_radius> <blur_spread>
-    if let (Ok(color), Ok(h_offset), Ok(v_offset), Ok(blur_radius), Ok(blur_spread)) =
-        (parse_color(a), parse_px(b), parse_px(c), parse_px(d), parse_px(e))
-    {
+    if let (Ok(color), Ok(h_offset), Ok(v_offset), Ok(blur_radius), Ok(blur_spread)) = (
+        parse_color(a),
+        parse_px(b),
+        parse_px(c),
+        parse_px(d),
+        parse_px(e),
+    ) {
         return Ok(BoxShadow {
             h_offset: h_offset.into(),
             v_offset: v_offset.into(),
@@ -1051,7 +1076,8 @@ fn parse_rgb(s: impl AsRef<str>) -> Result<Color, StyleError> {
     let parts = s.split(',').map(str::trim).collect::<Vec<_>>();
 
     if let [r, g, b] = parts[..] {
-        if let (Ok(r), Ok(g), Ok(b)) = (parse_rgb_value(r), parse_rgb_value(g), parse_rgb_value(b)) {
+        if let (Ok(r), Ok(g), Ok(b)) = (parse_rgb_value(r), parse_rgb_value(g), parse_rgb_value(b))
+        {
             return Ok(Color::rgb8(r, g, b));
         }
     }
@@ -1066,7 +1092,8 @@ fn parse_rgb_value(s: &str) -> Result<u8, StyleError> {
             .parse::<u8>()
             .map_or_else(|e| Err(StyleError::new(&e, s)), |v| Ok(v.clamp(0, 100)))
     } else {
-        s.parse::<u8>().map_or_else(|e| Err(StyleError::new(&e, s)), Ok)
+        s.parse::<u8>()
+            .map_or_else(|e| Err(StyleError::new(&e, s)), Ok)
     }
 }
 
@@ -1102,10 +1129,15 @@ fn parse_transition(s: impl AsRef<str>) -> Result<(String, Transition), StyleErr
 #[inline]
 fn parse_seconds(s: &str) -> Result<f64, StyleError> {
     let Some(stripped) = s.strip_suffix('s') else {
-        return Err(StyleError::new("Duration must be given as seconds i.e. 1s or 0.1s", s));
+        return Err(StyleError::new(
+            "Duration must be given as seconds i.e. 1s or 0.1s",
+            s,
+        ));
     };
 
-    let f = stripped.parse::<f64>().map_err(|e| StyleError::new(&e, s))?;
+    let f = stripped
+        .parse::<f64>()
+        .map_err(|e| StyleError::new(&e, s))?;
 
     Ok(f)
 }

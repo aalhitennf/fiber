@@ -131,13 +131,15 @@ impl State {
                     }
                     VariableType::Integer => {
                         log::info!("Created i64 variable: {name}");
-                        let boxed_val: Box<dyn Any> = Box::new(d.parse::<i64>().unwrap_or_default());
+                        let boxed_val: Box<dyn Any> =
+                            Box::new(d.parse::<i64>().unwrap_or_default());
                         self.variables
                             .insert(VariableKey::new::<i64>(name), RwSignal::new(boxed_val));
                     }
                     VariableType::Float => {
                         log::info!("Created f64 variable: {name}");
-                        let boxed_val: Box<dyn Any> = Box::new(d.parse::<f64>().unwrap_or_default());
+                        let boxed_val: Box<dyn Any> =
+                            Box::new(d.parse::<f64>().unwrap_or_default());
                         self.variables
                             .insert(VariableKey::new::<f64>(name), RwSignal::new(boxed_val));
                     }
@@ -189,7 +191,8 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        self.viewables.insert(key.to_string(), RwSignal::new(dyn_items));
+        self.viewables
+            .insert(key.to_string(), RwSignal::new(dyn_items));
     }
 
     pub fn update<T: 'static>(&self, key: &str, f: impl FnOnce(&mut T)) {
@@ -204,7 +207,11 @@ impl State {
         }
     }
 
-    pub fn update_view<T: Viewable + Clone + 'static>(&self, key: &str, f: impl FnOnce(&mut Vec<T>)) {
+    pub fn update_view<T: Viewable + Clone + 'static>(
+        &self,
+        key: &str,
+        f: impl FnOnce(&mut Vec<T>),
+    ) {
         if let Some(sig) = self.viewables.get(key) {
             let mut items = sig.with_untracked(|v| {
                 let mut items = Vec::with_capacity(v.len());

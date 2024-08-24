@@ -13,7 +13,12 @@ pub struct ParseError {
 
 impl ParseError {
     #[inline]
-    pub fn expected_token(expected: &TokenKind, found: &TokenKind, line: usize, col: usize) -> Self {
+    pub fn expected_token(
+        expected: &TokenKind,
+        found: &TokenKind,
+        line: usize,
+        col: usize,
+    ) -> Self {
         ParseError {
             kind: ParseErrorKind::ExpectedToken(format!(
                 "Expected token `{expected:?}`, found `{found:?}` at {line}:{col}"

@@ -83,10 +83,12 @@ impl Theme {
                     .then_some(e.path())
             });
 
-        let combined = files.flat_map(std::fs::read_to_string).fold(String::new(), |mut s, c| {
-            s.push_str(&c);
-            s
-        });
+        let combined = files
+            .flat_map(std::fs::read_to_string)
+            .fold(String::new(), |mut s, c| {
+                s.push_str(&c);
+                s
+            });
 
         StyleParser::blocks(&combined)
     }
@@ -189,8 +191,9 @@ impl Theme {
 
     #[must_use]
     pub fn apply_classes(&self, s: Style, keys: &[&str]) -> Style {
-        keys.iter()
-            .fold(s, |s, key| s.apply_opt(self.get_style(key), |s, t| s.apply(t.clone())))
+        keys.iter().fold(s, |s, key| {
+            s.apply_opt(self.get_style(key), |s, t| s.apply(t.clone()))
+        })
     }
 }
 

@@ -46,7 +46,11 @@ impl App {
     /// Panics if given path doesn't exists
     #[must_use]
     pub fn from_path(path: impl AsRef<Path>) -> Self {
-        let path = path.as_ref().join("fiber").canonicalize().expect("Invalid path");
+        let path = path
+            .as_ref()
+            .join("fiber")
+            .canonicalize()
+            .expect("Invalid path");
 
         App {
             state: State::default(),
@@ -90,7 +94,9 @@ impl App {
 
         let (sender, receiver) = crossbeam_channel::unbounded();
 
-        let observer = RwSignal::new(SourceObserver::new(&self.path, sender).expect("Failed to create Runtime"));
+        let observer = RwSignal::new(
+            SourceObserver::new(&self.path, sender).expect("Failed to create Runtime"),
+        );
         let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
@@ -148,9 +154,11 @@ impl App {
             move || {
                 // TODO This probably don't need to be dyn_view on release build and could be
                 // TODO scoped down to specific views/nodes
-                dyn_view(move || builders::source(&include_str!("../../examples/stateful/fiber/main.fml")))
-                    .css(&["body"])
-                    .debug_name("Body")
+                dyn_view(move || {
+                    builders::source(&include_str!("../../examples/stateful/fiber/main.fml"))
+                })
+                .css(&["body"])
+                .debug_name("Body")
             },
             ThemeOptions::with_path(self.path.join("styles")),
         );

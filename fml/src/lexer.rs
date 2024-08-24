@@ -157,7 +157,9 @@ impl<'a> Lexer<'a> {
                         while let Some(next_ch) = self.peek_char() {
                             if next_ch == '\n' {
                                 tokens.push(Token {
-                                    kind: TokenKind::LineComment(&self.input[start_pos..self.position]),
+                                    kind: TokenKind::LineComment(
+                                        &self.input[start_pos..self.position],
+                                    ),
                                     start: start_pos,
                                     end: self.position,
                                     line: self.line,
@@ -189,7 +191,9 @@ impl<'a> Lexer<'a> {
                     }
 
                     tokens.push(Token {
-                        kind: TokenKind::Variable(&self.input[(start_pos + 1)..(self.position - 1)]),
+                        kind: TokenKind::Variable(
+                            &self.input[(start_pos + 1)..(self.position - 1)],
+                        ),
                         start: start_pos,
                         end: self.position,
                         line: self.line,
@@ -221,7 +225,11 @@ impl<'a> Lexer<'a> {
                     if inside_tag {
                         if ch.is_alphabetic() || ch == '_' || ch == '-' {
                             while let Some(next_ch) = self.peek_char() {
-                                if next_ch.is_alphanumeric() || next_ch == '-' || next_ch == ':' || next_ch == '_' {
+                                if next_ch.is_alphanumeric()
+                                    || next_ch == '-'
+                                    || next_ch == ':'
+                                    || next_ch == '_'
+                                {
                                     self.next_char();
                                 } else {
                                     break;
@@ -232,7 +240,9 @@ impl<'a> Lexer<'a> {
 
                             if let Some('=') = self.peek_char() {
                                 tokens.push(Token {
-                                    kind: TokenKind::AttributeName(&self.input[start_pos..self.position]),
+                                    kind: TokenKind::AttributeName(
+                                        &self.input[start_pos..self.position],
+                                    ),
                                     start: start_pos,
                                     end: end_pos,
                                     line: self.line,
@@ -257,7 +267,9 @@ impl<'a> Lexer<'a> {
                             }
 
                             tokens.push(Token {
-                                kind: TokenKind::AttributeValue(&self.input[start_pos..self.position]),
+                                kind: TokenKind::AttributeValue(
+                                    &self.input[start_pos..self.position],
+                                ),
                                 start: start_pos,
                                 end: self.position,
                                 line: self.line,
