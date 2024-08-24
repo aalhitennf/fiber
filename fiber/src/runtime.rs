@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use crossbeam_channel::Sender;
+use floem::reactive::{RwSignal, Scope};
 
 use crate::observer::FileObserver;
 

@@ -54,16 +54,17 @@ fn element_to_anyview(elem: &Element) -> AnyView {
 
     match &elem.kind {
         ElementKind::Root => {
-            let children = elem.children.iter().map(node).collect::<Vec<_>>();
+            let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
             container(children).style(Style::size_full).css(&["root"]).into_any()
         }
 
         ElementKind::Box => {
-            let children = elem.children.iter().map(node).collect::<Vec<_>>();
+            let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
             container(children).css(&["box"]).into_any()
         }
 
         ElementKind::Label => {
+            let elem = elem.clone();
             if elem.children.is_empty() {
                 return text("").into_any();
             }
@@ -120,9 +121,6 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                     }
                 }
             }
-
-            drop(state);
-
             label(move || content.get()).into_any()
         }
 

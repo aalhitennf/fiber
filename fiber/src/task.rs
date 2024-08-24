@@ -8,6 +8,7 @@ use floem::reactive::{use_context, Scope};
 
 use crate::StateCtx;
 
+/// An asynchronous task that sends and receives values of type `T`.
 pub struct AsyncTask<T>
 where
     T: Send + Clone + 'static,
