@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use dashmap::DashMap;
 use floem::reactive::RwSignal;
-use floem::{AnyView, IntoView, View, ViewId};
+use floem::{AnyView, View};
 use fml::VariableType;
 
 pub trait Viewable: View + Any {
@@ -18,18 +18,6 @@ pub struct State {
     pub(crate) fns: DashMap<String, FnPointer>,
     pub(crate) variables: DashMap<VariableKey, RwSignal<Box<dyn Any>>>,
     pub(crate) viewables: DashMap<String, RwSignal<Vec<Box<dyn Viewable>>>>,
-}
-
-#[derive(Clone)]
-struct Koira {
-    id: ViewId,
-    val: i64,
-}
-
-impl View for Koira {
-    fn id(&self) -> floem::ViewId {
-        self.id
-    }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -182,7 +170,10 @@ impl State {
         }
     }
 
-    pub fn insert_view<T: Viewable + Clone + 'static>(&self, key: &str, value: Vec<T>) {
+    pub fn insert_view<T>(&self, key: &str, value: Vec<T>)
+    where
+        T: Viewable + Clone + 'static,
+    {
         let dyn_items = value
             .into_iter()
             .map(|v| {
@@ -195,7 +186,10 @@ impl State {
             .insert(key.to_string(), RwSignal::new(dyn_items));
     }
 
-    pub fn update<T: 'static>(&self, key: &str, f: impl FnOnce(&mut T)) {
+    pub fn update<T>(&self, key: &str, f: impl FnOnce(&mut T))
+    where
+        T: 'static,
+    {
         if let Some(sig) = self.variables.get(&VariableKey::new::<T>(key)) {
             sig.update(|v| {
                 if let Some(vv) = (*v).downcast_mut::<T>() {
@@ -207,11 +201,10 @@ impl State {
         }
     }
 
-    pub fn update_view<T: Viewable + Clone + 'static>(
-        &self,
-        key: &str,
-        f: impl FnOnce(&mut Vec<T>),
-    ) {
+    pub fn update_view<T>(&self, key: &str, f: impl FnOnce(&mut Vec<T>))
+    where
+        T: Viewable + Clone + 'static,
+    {
         if let Some(sig) = self.viewables.get(key) {
             let mut items = sig.with_untracked(|v| {
                 let mut items = Vec::with_capacity(v.len());
