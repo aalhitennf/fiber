@@ -70,7 +70,7 @@ impl App {
         use floem::views::{dyn_view, Decorators};
         use floem::IntoView;
 
-        use crate::runtime::Runtime;
+        use crate::observer::SourceObserver;
         use crate::theme::{theme_provider, StyleCss, Theme, ThemeOptions};
         use crate::{builders, StateCtx};
 
@@ -84,7 +84,7 @@ impl App {
 
         let (sender, receiver) = crossbeam_channel::unbounded();
 
-        let runtime = RwSignal::new(Runtime::new(&self.path, sender).expect("Failed to create Runtime"));
+        let runtime = RwSignal::new(SourceObserver::new(&self.path, sender).expect("Failed to create Runtime"));
         let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
@@ -97,7 +97,7 @@ impl App {
 
         create_effect(move |_| {
             if runtime_event_sig.get().is_some() {
-                runtime.update(Runtime::update_source);
+                runtime.update(SourceObserver::update);
                 log::info!("Sources reloaded");
             }
         });

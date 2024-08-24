@@ -6,12 +6,10 @@
 
 mod app;
 mod builders;
-mod runtime;
+mod observer;
 pub mod state;
 pub mod task;
 mod theme;
-
-mod observer;
 
 // Export macros
 pub use fiber_macro::task;
