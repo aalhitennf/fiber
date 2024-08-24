@@ -3,11 +3,12 @@
 mod style;
 mod task;
 
+use proc_macro2::Span;
 use style::{parse_enum_variant, ParsedVariants};
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, ItemFn};
+use syn::{parse_macro_input, Data, DeriveInput, Ident, ItemFn};
 
 #[proc_macro_derive(StyleParser, attributes(key, parser, prop))]
 pub fn derive_style_parser(input: TokenStream) -> TokenStream {
@@ -83,3 +84,28 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         task::build_sync_task(&input, &fn_pointer_path)
     }
 }
+
+// #[proc_macro_derive(Viewable)]
+// pub fn viewable(input: TokenStream) -> TokenStream {
+//     let input = parse_macro_input!(input as DeriveInput);
+//     let name = input.ident.clone();
+
+//     let generics = input.generics;
+//     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+//     let Data::Struct(data) = input.data else {
+//         panic!("Viewable can only derive to struct");
+//     };
+
+//     let fields = data.fields;
+//     let id_ident = Ident::new("_view_id", Span::call_site());
+
+//     quote! {
+//         impl #impl_generics floem::View for #name #ty_generics #where_clause {
+//             fn id(&self) -> floem::ViewId {
+//                 self.view_id
+//             }
+//         }
+//     }
+//     .into()
+// }
