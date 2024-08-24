@@ -108,7 +108,9 @@ impl TryFrom<&Path> for SourceMap {
             }
         };
 
-        read_dir(&path.join("components"));
+        if path.join("components").exists() {
+            read_dir(&path.join("components"));
+        }
 
         Ok(Self { main, components })
     }

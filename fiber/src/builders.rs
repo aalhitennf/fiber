@@ -5,9 +5,12 @@ use floem::peniko::Color;
 use floem::reactive::{use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
-use floem::views::{button, container, h_stack_from_iter, label, text, text_input, v_stack_from_iter, Decorators};
+use floem::views::{
+    button, container, dyn_view, empty, h_stack, h_stack_from_iter, label, stack_from_iter, text, text_input,
+    v_stack_from_iter, Decorators,
+};
 use floem::{AnyView, IntoView, View};
-use fml::{Attribute, AttributeValue, Element, ElementKind, Node, VariableType};
+use fml::{Attribute, AttributeValue, Element, ElementKind, Node, VariableName, VariableType};
 
 use crate::observer::SourceObserver;
 use crate::theme::parser::{parse_color, parse_px_pct, parse_pxpctauto};
@@ -40,7 +43,7 @@ fn node(node: &Node) -> AnyView {
 
 // TODO Too many lines
 fn element_to_anyview(elem: &Element) -> AnyView {
-    let attrs = elem
+    let style_attrs = elem
         .attributes
         .iter()
         .fold(Style::new(), |s, attr| attr_to_style(attr, s));
@@ -53,10 +56,11 @@ fn element_to_anyview(elem: &Element) -> AnyView {
         ElementKind::HStack => build_hstack(elem),
         ElementKind::VStack => build_vstack(elem),
         ElementKind::Input => build_input(elem),
+        ElementKind::List => build_list(elem),
         ElementKind::Custom(name) => build_custom(name),
         other => text(format!("Element '{other:?}' not implemented yet")).into_any(),
     }
-    .style(move |s| s.apply(attrs.clone()))
+    .style(move |s| s.apply(style_attrs.clone()))
 }
 
 fn attr_to_style<'a>(attr: &'a Attribute<'a>, s: Style) -> Style {
@@ -204,6 +208,49 @@ fn build_input(elem: &Element) -> AnyView {
     } else {
         text_input(RwSignal::new(format!("Var {name} not found"))).into_any()
     }
+}
+
+fn build_list(elem: &Element) -> AnyView {
+    let Some(attr) = elem.attributes.iter().find(|a| a.name == "items") else {
+        log::warn!("List has no attribute 'items'");
+        return container(empty()).into_any();
+    };
+
+    let Attribute {
+        name: _,
+        value:
+            AttributeValue::Variable {
+                name:
+                    VariableName {
+                        kind: VariableType::Unknown,
+                        name: varname,
+                    },
+                ..
+            },
+    } = attr
+    else {
+        log::warn!("List attribute 'items' must be variable");
+        return container(empty()).into_any();
+    };
+
+    let state = use_context::<StateCtx>().unwrap();
+
+    let Some(items_sig) = state.get_view(varname) else {
+        log::warn!("State has no variable '{varname}'");
+        return container(empty()).into_any();
+    };
+
+    let style_attrs = elem
+        .attributes
+        .iter()
+        .fold(Style::new(), |s, attr| attr_to_style(attr, s));
+
+    dyn_view(move || {
+        let style_attrs = style_attrs.clone();
+        let items = items_sig.with(|s| s.iter().map(|f| f.into_anyview()).collect::<Vec<_>>());
+        stack_from_iter(items).style(move |s| s.apply(style_attrs.clone()))
+    })
+    .into_any()
 }
 
 fn build_custom(name: &str) -> AnyView {

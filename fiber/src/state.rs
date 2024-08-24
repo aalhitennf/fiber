@@ -6,12 +6,30 @@ use std::rc::Rc;
 
 use dashmap::DashMap;
 use floem::reactive::RwSignal;
+use floem::{AnyView, IntoView, View, ViewId};
 use fml::VariableType;
+
+pub trait Viewable: View + Any {
+    fn into_anyview(&self) -> AnyView;
+}
 
 #[derive(Default)]
 pub struct State {
     pub(crate) fns: DashMap<String, FnPointer>,
     pub(crate) variables: DashMap<VariableKey, RwSignal<Box<dyn Any>>>,
+    pub(crate) viewables: DashMap<String, RwSignal<Vec<Box<dyn Viewable>>>>,
+}
+
+#[derive(Clone)]
+struct Koira {
+    id: ViewId,
+    val: i64,
+}
+
+impl View for Koira {
+    fn id(&self) -> floem::ViewId {
+        self.id
+    }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq)]
@@ -61,6 +79,13 @@ fn dbg_print_state(state: StateCtx) {
 
     log::info!("Variables ({}):", state.variables.len());
     for entry in &state.variables {
+        log::info!("\t{}", entry.key());
+    }
+
+    log::info!("");
+
+    log::info!("Viewables ({}):", state.viewables.len());
+    for entry in &state.viewables {
         log::info!("\t{}", entry.key());
     }
 
@@ -139,8 +164,11 @@ impl State {
 
     #[must_use]
     pub fn get<T>(&self, key: &str) -> Option<RwSignal<Box<dyn Any>>> {
-        let sig = self.variables.get(&VariableKey::new::<T>(key))?;
-        Some(*sig.value())
+        self.variables.view(&VariableKey::new::<T>(key), |_, v| *v)
+    }
+
+    pub fn get_view(&self, key: &str) -> Option<RwSignal<Vec<Box<dyn Viewable>>>> {
+        self.viewables.view(key, |_, v| *v)
     }
 
     pub fn set<T: 'static>(&self, key: &str, value: T) {
@@ -152,6 +180,18 @@ impl State {
         }
     }
 
+    pub fn insert_view<T: Viewable + Clone + 'static>(&self, key: &str, value: Vec<T>) {
+        let dyn_items = value
+            .into_iter()
+            .map(|v| {
+                let iv: Box<dyn Viewable> = Box::new(v);
+                iv
+            })
+            .collect::<Vec<_>>();
+
+        self.viewables.insert(key.to_string(), RwSignal::new(dyn_items));
+    }
+
     pub fn update<T: 'static>(&self, key: &str, f: impl FnOnce(&mut T)) {
         if let Some(sig) = self.variables.get(&VariableKey::new::<T>(key)) {
             sig.update(|v| {
@@ -161,6 +201,36 @@ impl State {
             });
         } else {
             log::error!("No var {key}");
+        }
+    }
+
+    pub fn update_view<T: Viewable + Clone + 'static>(&self, key: &str, f: impl FnOnce(&mut Vec<T>)) {
+        if let Some(sig) = self.viewables.get(key) {
+            let mut items = sig.with_untracked(|v| {
+                let mut items = Vec::with_capacity(v.len());
+
+                for item in v {
+                    if let Some(v) = (item as &dyn Any).downcast_ref::<T>() {
+                        items.push(v.clone());
+                    } else {
+                        eprintln!("cast failed in task: {}", item.debug_name());
+                    }
+                }
+
+                items
+            });
+
+            f(&mut items);
+
+            let d_cast = items
+                .into_iter()
+                .map(|i| {
+                    let b: Box<dyn Viewable> = Box::new(i);
+                    b
+                })
+                .collect::<Vec<_>>();
+
+            sig.set(d_cast);
         }
     }
 

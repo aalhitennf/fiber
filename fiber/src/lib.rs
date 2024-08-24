@@ -17,3 +17,4 @@ pub use fiber_macro::task;
 // Export common structs
 pub use app::App;
 pub use state::StateCtx;
+pub use theme::StyleCss;

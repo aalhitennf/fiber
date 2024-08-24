@@ -1,0 +1,32 @@
+body {
+    width: 100%;
+}
+
+app {
+    width: 100%;
+    margin: 10px;
+    align-items: center;
+    gap: 5px;
+}
+
+items {
+    padding: 4px;
+    flex-direction: row-reverse;
+    gap: 5px;
+}
+
+list-item {
+    width: 100px;
+    align-content: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 10px;
+    border: 1px;
+    flex-direction: column;
+    gap: 10px;
+}
+
+list-item:hover {
+    background-color: moccasin;
+    cursor: pointer;
+}

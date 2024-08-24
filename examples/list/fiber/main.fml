@@ -1,0 +1,8 @@
+<vstack class="app">
+    <list items={var:list_items} class="items"/>
+
+    <button onclick={add_item}>Decrease</button>
+
+    <button onclick={dbg_print_state}>Log state</button>
+
+</vstack>

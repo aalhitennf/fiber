@@ -61,6 +61,12 @@ impl App {
         self
     }
 
+    #[must_use]
+    pub fn state(mut self, f: impl Fn(&mut State)) -> Self {
+        f(&mut self.state);
+        self
+    }
+
     /// # Panics
     /// Panics if creating Runtime fails
     #[cfg(debug_assertions)]
