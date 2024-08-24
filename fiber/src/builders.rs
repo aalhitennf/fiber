@@ -40,158 +40,21 @@ fn node(node: &Node) -> AnyView {
 
 // TODO Too many lines
 fn element_to_anyview(elem: &Element) -> AnyView {
-    let elem_value_key = format!("value_{}", elem.id);
-
     let attrs = elem
         .attributes
         .iter()
         .fold(Style::new(), |s, attr| attr_to_style(attr, s));
 
-    let value_var_name = elem.get_attr("value").map(|a| a.to_string());
-
-    if value_var_name.is_some() {
-        log::info!("value_var_name = {value_var_name:?}");
-    }
-
     match &elem.kind {
-        ElementKind::Root => {
-            let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
-            container(children).style(Style::size_full).css(&["root"]).into_any()
-        }
-
-        ElementKind::Box => {
-            let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
-            container(children).css(&["box"]).into_any()
-        }
-
-        ElementKind::Label => {
-            let elem = elem.clone();
-            if elem.children.is_empty() {
-                return text("").into_any();
-            }
-
-            if elem.children.iter().any(|e| matches!(e, Node::Element(_))) {
-                return text("Label can have only one text element as child").into_any();
-            }
-
-            let Some(Node::Text(t)) = elem.children.first() else {
-                return text("Label can have only one text element as child").into_any();
-            };
-
-            let state = use_context::<StateCtx>().unwrap();
-
-            let content = RwSignal::new(t.content.to_string());
-
-            for var in &t.variable_refs {
-                let Some((_, name)) = var.name().split_once(':') else {
-                    log::error!("Invalid variable {:?}", var);
-                    continue;
-                };
-
-                // TODO Ugly maps. Maybe create state function with default as arg or restrict T to impl Default
-                match var.kind {
-                    VariableType::String => {
-                        let value = state
-                            .get::<String>(name)
-                            .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_default()))
-                            .unwrap_or_default()
-                            .to_string();
-
-                        content.update(|c| *c = c.replace(var.full_match, &value));
-                    }
-                    VariableType::Integer => {
-                        let value = state
-                            .get::<i64>(name)
-                            .map(move |s| s.with(|v| v.downcast_ref::<i64>().copied().unwrap_or_default())) // TODO Ugly
-                            .unwrap_or_default()
-                            .to_string();
-
-                        content.update(|c| *c = c.replace(var.full_match, &value));
-                    }
-                    VariableType::Float => {
-                        let value = state
-                            .get::<f64>(name)
-                            .map(move |s| s.with(|v| v.downcast_ref::<f64>().copied().unwrap_or_default())) // TODO Ugly
-                            .unwrap_or_default()
-                            .to_string();
-
-                        content.update(|c| *c = c.replace(var.full_match, &value));
-                    }
-                    VariableType::Unknown => {
-                        log::warn!("Unsupported inline variable type {:?}", var.kind);
-                    }
-                }
-            }
-            label(move || content.get()).into_any()
-        }
-
-        ElementKind::Button => {
-            let mut button = if let Some(Node::Text(t)) = elem.children.first() {
-                let val = t.content.to_string();
-                button(move || val.clone()).into_any()
-            } else {
-                let id = elem.id;
-                button(move || format!("Button {id}")).into_any()
-            };
-
-            if let Some(value) = elem.get_attr("onclick") {
-                let state = use_context::<StateCtx>().unwrap();
-                let f = state.get_fn(&value.to_string());
-
-                if let Some(onclick_fn) = f {
-                    button = button.on_click_cont(move |_| {
-                        onclick_fn();
-                    });
-                } else {
-                    let fn_name = value.to_string();
-                    button = button.on_click_stop(move |_| {
-                        log::warn!("Button onclick fn '{fn_name}' not set");
-                    });
-                }
-            } else {
-                log::debug!("Button without onclick attribute");
-            }
-
-            button.css(&["button"])
-        }
-
-        ElementKind::HStack => {
-            let children = elem.children.iter().map(node);
-            h_stack_from_iter(children).css(&["hstack"]).into_any()
-        }
-
-        ElementKind::VStack => {
-            let children = elem.children.iter().map(node);
-            v_stack_from_iter(children).css(&["vstack"]).into_any()
-        }
-
-        ElementKind::Input => {
-            let state = use_context::<StateCtx>().unwrap();
-
-            let name = &value_var_name.unwrap_or_else(|| elem_value_key.clone());
-
-            // TODO Probably very terrible
-            if let Some(sig) = state.get::<String>(name) {
-                let s = (&sig as &dyn Any).downcast_ref::<RwSignal<String>>().unwrap();
-                text_input(*s).into_any()
-            } else {
-                text_input(RwSignal::new(format!("Var {elem_value_key} not found"))).into_any()
-            }
-        }
-
-        ElementKind::Custom(name) => {
-            // TODO Not good thing
-            let source_map = use_context::<RwSignal<SourceObserver>>().unwrap();
-            if let Some(source) = source_map.get().component(name) {
-                match fml::parse(source) {
-                    Ok(n) => node(&n),
-                    Err(e) => text(e.to_string()).into_any(),
-                }
-            } else {
-                text(format!("Component not found: {name}")).into_any()
-            }
-        }
-        _ => text("other").into_any(),
+        ElementKind::Root => build_root(elem),
+        ElementKind::Box => build_box(elem),
+        ElementKind::Label => build_label(elem),
+        ElementKind::Button => build_button(elem),
+        ElementKind::HStack => build_hstack(elem),
+        ElementKind::VStack => build_vstack(elem),
+        ElementKind::Input => build_input(elem),
+        ElementKind::Custom(name) => build_custom(name),
+        other => text(format!("Element '{other:?}' not implemented yet")).into_any(),
     }
     .style(move |s| s.apply(attrs.clone()))
 }
@@ -214,6 +77,145 @@ fn attr_to_style<'a>(attr: &'a Attribute<'a>, s: Style) -> Style {
         "padding" => s.padding(attr_value_to_px_pct(attr.value)),
         "color" => s.color(attr_value_to_color(attr.value)),
         _ => s,
+    }
+}
+
+fn build_root(elem: &Element) -> AnyView {
+    let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
+    container(children).style(Style::size_full).css(&["root"]).into_any()
+}
+
+fn build_box(elem: &Element) -> AnyView {
+    let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
+    container(children).css(&["box"]).into_any()
+}
+
+fn build_label(elem: &Element) -> AnyView {
+    if elem.children.is_empty() {
+        return text("").into_any();
+    }
+
+    if elem.children.iter().any(|e| matches!(e, Node::Element(_))) {
+        return text("Label can have only one text element as child").into_any();
+    }
+
+    let Some(Node::Text(t)) = elem.children.first() else {
+        return text("Label can have only one text element as child").into_any();
+    };
+
+    let state = use_context::<StateCtx>().unwrap();
+
+    let content = RwSignal::new(t.content.to_string());
+
+    for var in &t.variable_refs {
+        let Some((_, name)) = var.name().split_once(':') else {
+            log::error!("Invalid variable {:?}", var);
+            continue;
+        };
+
+        // TODO Ugly maps. Maybe create state function with default as arg or restrict T to impl Default
+        match var.kind {
+            VariableType::String => {
+                let value = state
+                    .get::<String>(name)
+                    .map(move |s| s.with(|v| v.downcast_ref::<String>().cloned().unwrap_or_default()))
+                    .unwrap_or_default()
+                    .to_string();
+
+                content.update(|c| *c = c.replace(var.full_match, &value));
+            }
+            VariableType::Integer => {
+                let value = state
+                    .get::<i64>(name)
+                    .map(move |s| s.with(|v| v.downcast_ref::<i64>().copied().unwrap_or_default())) // TODO Ugly
+                    .unwrap_or_default()
+                    .to_string();
+
+                content.update(|c| *c = c.replace(var.full_match, &value));
+            }
+            VariableType::Float => {
+                let value = state
+                    .get::<f64>(name)
+                    .map(move |s| s.with(|v| v.downcast_ref::<f64>().copied().unwrap_or_default())) // TODO Ugly
+                    .unwrap_or_default()
+                    .to_string();
+
+                content.update(|c| *c = c.replace(var.full_match, &value));
+            }
+            VariableType::Unknown => {
+                log::warn!("Unsupported inline variable type {:?}", var.kind);
+            }
+        }
+    }
+    label(move || content.get()).into_any()
+}
+
+fn build_button(elem: &Element) -> AnyView {
+    let mut button = if let Some(Node::Text(t)) = elem.children.first() {
+        let val = t.content.to_string();
+        button(move || val.clone()).into_any()
+    } else {
+        let id = elem.id;
+        button(move || format!("Button {id}")).into_any()
+    };
+
+    if let Some(value) = elem.get_attr("onclick") {
+        let state = use_context::<StateCtx>().unwrap();
+        let f = state.get_fn(&value.to_string());
+
+        if let Some(onclick_fn) = f {
+            button = button.on_click_cont(move |_| {
+                onclick_fn();
+            });
+        } else {
+            let fn_name = value.to_string();
+            button = button.on_click_stop(move |_| {
+                log::warn!("Button onclick fn '{fn_name}' not set");
+            });
+        }
+    } else {
+        log::debug!("Button without onclick attribute");
+    }
+
+    button.css(&["button"])
+}
+
+fn build_hstack(elem: &Element) -> AnyView {
+    let children = elem.children.iter().map(node);
+    h_stack_from_iter(children).css(&["hstack"]).into_any()
+}
+
+fn build_vstack(elem: &Element) -> AnyView {
+    let children = elem.children.iter().map(node);
+    v_stack_from_iter(children).css(&["vstack"]).into_any()
+}
+
+fn build_input(elem: &Element) -> AnyView {
+    let name = elem
+        .get_attr("value")
+        .map_or_else(|| format!("value_{}", elem.id), |attr| attr.to_string());
+
+    let state = use_context::<StateCtx>().unwrap();
+
+    // TODO Probably very terrible
+    if let Some(sig) = state.get::<String>(&name) {
+        let s = (&sig as &dyn Any).downcast_ref::<RwSignal<String>>().unwrap();
+        text_input(*s).into_any()
+    } else {
+        text_input(RwSignal::new(format!("Var {name} not found"))).into_any()
+    }
+}
+
+fn build_custom(name: &str) -> AnyView {
+    // TODO Not good thing
+    let source_map = use_context::<RwSignal<SourceObserver>>().unwrap();
+    if let Some(source) = source_map.get().component(name) {
+        match fml::parse(source) {
+            Ok(n) => node(&n),
+            Err(e) => text(e.to_string()).into_any(),
+        }
+    } else {
+        text(format!("Component not found: {name}")).into_any()
     }
 }
 
