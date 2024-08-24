@@ -56,7 +56,7 @@ impl<'a> From<&'a str> for VariableType {
         match value {
             "str" => VariableType::String,
             "int" => VariableType::Integer,
-            "dec" => VariableType::Float,
+            "dbl" => VariableType::Float,
             _ => VariableType::Unknown,
         }
     }
