@@ -84,26 +84,26 @@ impl App {
 
         let (sender, receiver) = crossbeam_channel::unbounded();
 
-        let runtime = RwSignal::new(SourceObserver::new(&self.path, sender).expect("Failed to create Runtime"));
+        let observer = RwSignal::new(SourceObserver::new(&self.path, sender).expect("Failed to create Runtime"));
         let state = StateCtx::new(self.state);
         let theme = RwSignal::new(Theme::from_path(&self.path).expect("Invalid theme path"));
 
-        let runtime_event_sig = create_signal_from_channel(receiver.clone());
-        let theme_event_sig = create_signal_from_channel(theme.get_untracked().channel.1);
+        let observer_event = create_signal_from_channel(receiver.clone());
+        let theme_event = create_signal_from_channel(theme.get_untracked().channel.1);
 
-        provide_context(runtime);
+        provide_context(observer);
         provide_context(state);
         provide_context(theme);
 
         create_effect(move |_| {
-            if runtime_event_sig.get().is_some() {
-                runtime.update(SourceObserver::update);
+            if observer_event.get().is_some() {
+                observer.update(SourceObserver::update);
                 log::info!("Sources reloaded");
             }
         });
 
         create_effect(move |_| {
-            if theme_event_sig.get().is_some() {
+            if theme_event.get().is_some() {
                 theme.update(Theme::reload);
                 log::info!("Css reloaded");
             }
@@ -111,7 +111,7 @@ impl App {
 
         let theme_provider = theme_provider(
             move || {
-                dyn_view(move || runtime.with(|rt| builders::source(rt.source()).into_any()))
+                dyn_view(move || observer.with(|rt| builders::source(rt.main()).into_any()))
                     .css(&["body"])
                     .debug_name("Body")
             },

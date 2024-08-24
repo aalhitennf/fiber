@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -7,7 +8,7 @@ use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 #[derive(Clone)]
 pub struct SourceObserver {
     _observer: Rc<FileObserver>,
-    source: String,
+    source_map: SourceMap,
     path: PathBuf,
 }
 
@@ -17,27 +18,99 @@ impl SourceObserver {
     pub fn new(path: &Path, sender: Sender<()>) -> Result<Self, Box<dyn std::error::Error>> {
         let observer = FileObserver::new(path, sender, true)?;
         log::info!("Runtime observing {path:?}");
-        let source = std::fs::read_to_string(path.join("main.fml"))?;
-        log::info!("Main source found ({})", source.len());
+        let source_map = SourceMap::try_from(path)?;
 
         Ok(SourceObserver {
             _observer: Rc::new(observer),
-            source,
+            source_map,
             path: path.to_path_buf(),
         })
     }
 
     pub fn update(&mut self) {
-        match std::fs::read_to_string(self.path.join("main.fml")) {
-            Ok(new_source) => self.source = new_source,
-            Err(e) => {
-                log::error!("{e}");
-            }
+        if let Ok(new_map) = SourceMap::try_from(self.path.as_path()) {
+            self.source_map = new_map;
+        } else {
+            log::error!("Source map update failed!");
         }
     }
 
-    pub fn source(&self) -> &str {
-        &self.source
+    pub fn main(&self) -> &str {
+        &self.source_map.main
+    }
+
+    pub fn component(&self, name: &str) -> Option<&String> {
+        self.source_map.components.get(name)
+    }
+}
+
+#[derive(Clone)]
+pub struct SourceMap {
+    pub main: String,
+    pub components: HashMap<String, String>,
+}
+
+impl TryFrom<&Path> for SourceMap {
+    type Error = std::io::Error;
+
+    fn try_from(path: &Path) -> Result<Self, Self::Error> {
+        let main = std::fs::read_to_string(path.join("main.fml"))?;
+
+        let mut components = HashMap::new();
+
+        let mut read_dir = |path: &Path| {
+            let Ok(dir_entry) = std::fs::read_dir(path) else {
+                log::warn!("Failed to read dir: {:?}", path);
+                return;
+            };
+
+            for entry in dir_entry {
+                let Ok(entry) = entry else {
+                    log::warn!("Invalid entry: {entry:?}");
+                    continue;
+                };
+
+                let Ok(meta) = entry.metadata() else {
+                    log::warn!("Failed to read entry metadata: {entry:?}");
+                    continue;
+                };
+
+                let path = entry.path();
+
+                if !meta.is_file() {
+                    continue;
+                }
+
+                if !path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("fml")) {
+                    continue;
+                }
+
+                let Some(name) = path.file_stem() else {
+                    log::warn!("Failed to get file stem from: {:?}", path);
+                    continue;
+                };
+
+                let Some(name) = name.to_str() else {
+                    log::warn!("Failed to create str from OsStr: {:?}", name);
+                    continue;
+                };
+
+                let Ok(source) = std::fs::read_to_string(entry.path()) else {
+                    log::warn!("Failed to read file content: {:?}", path);
+                    continue;
+                };
+
+                if components.insert(name.to_string(), source).is_some() {
+                    log::warn!("Duplicate component: {name}");
+                }
+
+                log::info!("Added component: {name}");
+            }
+        };
+
+        read_dir(&path.join("components"));
+
+        Ok(Self { main, components })
     }
 }
 

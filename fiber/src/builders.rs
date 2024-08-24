@@ -9,6 +9,7 @@ use floem::views::{button, container, h_stack_from_iter, label, text, text_input
 use floem::{AnyView, IntoView, View};
 use fml::{Attribute, AttributeValue, Element, ElementKind, Node, VariableType};
 
+use crate::observer::SourceObserver;
 use crate::theme::parser::{parse_color, parse_px_pct, parse_pxpctauto};
 use crate::theme::{StyleCss, Theme};
 use crate::StateCtx;
@@ -175,6 +176,19 @@ fn element_to_anyview(elem: &Element) -> AnyView {
                 text_input(*s).into_any()
             } else {
                 text_input(RwSignal::new(format!("Var {elem_value_key} not found"))).into_any()
+            }
+        }
+
+        ElementKind::Custom(name) => {
+            // TODO Not good thing
+            let source_map = use_context::<RwSignal<SourceObserver>>().unwrap();
+            if let Some(source) = source_map.get().component(name) {
+                match fml::parse(source) {
+                    Ok(n) => node(&n),
+                    Err(e) => text(e.to_string()).into_any(),
+                }
+            } else {
+                text(format!("Component not found: {name}")).into_any()
             }
         }
         _ => text("other").into_any(),

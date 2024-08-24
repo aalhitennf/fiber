@@ -1,0 +1,4 @@
+<hstack>
+    <button onclick={decrease_counter}>Decrease</button>
+    <button onclick={increase_counter}>Increase</button>
+</hstack>

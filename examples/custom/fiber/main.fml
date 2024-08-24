@@ -1,0 +1,9 @@
+<vstack class="app">
+    <label class="counter">{int:counter}</label>
+
+    <counterbuttons />
+    <counterbuttons />
+
+    <button onclick={dbg_print_state}>Log state</button>
+
+</vstack>

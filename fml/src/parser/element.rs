@@ -56,7 +56,6 @@ pub enum ElementKind<'a> {
     VStack,
     HStack,
     Clip,
-    // Text,
     Label,
     Button,
     Input,
