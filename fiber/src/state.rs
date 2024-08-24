@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::fmt::Display;
+use std::hash::Hash;
 use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
@@ -11,6 +12,33 @@ use fml::VariableType;
 
 pub trait Viewable: View + Any {
     fn into_anyview(&self) -> AnyView;
+    fn as_any(&self) -> &dyn std::any::Any
+    where
+        Self: Sized,
+    {
+        self
+    }
+}
+
+pub trait CollectViewable {
+    fn collect_viewable(&mut self) -> Vec<Box<dyn Viewable>>;
+}
+
+impl<T> CollectViewable for T
+where
+    T: Iterator,
+    <T as Iterator>::Item: Viewable,
+{
+    fn collect_viewable(&mut self) -> Vec<Box<dyn Viewable>> {
+        let mut items = Vec::new();
+
+        while let Some(next) = self.next() {
+            let dyn_item: Box<dyn Viewable> = Box::new(next);
+            items.push(dyn_item);
+        }
+
+        items
+    }
 }
 
 #[derive(Default)]
@@ -20,10 +48,23 @@ pub struct State {
     pub(crate) viewables: DashMap<String, RwSignal<Vec<Box<dyn Viewable>>>>,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct VariableKey {
     name: String,
     ty: String,
+}
+
+impl PartialEq for VariableKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for VariableKey {}
+
+impl Hash for VariableKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write(self.name.as_bytes())
+    }
 }
 
 impl Display for VariableKey {
@@ -34,10 +75,9 @@ impl Display for VariableKey {
 
 impl VariableKey {
     pub fn new<T>(name: &str) -> Self {
-        let ty = std::any::type_name::<T>().to_string();
         Self {
             name: name.to_string(),
-            ty,
+            ty: std::any::type_name::<T>().to_string(),
         }
     }
 }
@@ -170,6 +210,18 @@ impl State {
         }
     }
 
+    pub fn insert<T: 'static>(&self, key: &str, value: T) {
+        let key = VariableKey::new::<T>(key);
+        let value: Box<dyn Any> = Box::new(value);
+        self.variables.insert(key, RwSignal::new(value));
+        // if let Some(sig) = self.variables.get(&) {
+        //     let new_rc: Box<dyn Any> = Box::new(value);
+        //     sig.set(new_rc);
+        // } else {
+        //     log::error!("No var {key}");
+        // }
+    }
+
     pub fn insert_view<T>(&self, key: &str, value: Vec<T>)
     where
         T: Viewable + Clone + 'static,
@@ -194,6 +246,8 @@ impl State {
             sig.update(|v| {
                 if let Some(vv) = (*v).downcast_mut::<T>() {
                     f(vv);
+                } else {
+                    log::error!("Downcast int state update failed");
                 }
             });
         } else {
@@ -209,7 +263,7 @@ impl State {
             let mut items = sig.with_untracked(|v| {
                 let mut items = Vec::with_capacity(v.len());
 
-                for item in v {
+                for item in &*v {
                     if let Some(v) = (item as &dyn Any).downcast_ref::<T>() {
                         items.push(v.clone());
                     } else {

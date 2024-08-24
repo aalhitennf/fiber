@@ -1,6 +1,4 @@
-use std::any::Any;
-
-use fiber::state::Viewable;
+use fiber::state::{CollectViewable, Viewable};
 use fiber::{App, StateCtx, StyleCss};
 use floem::views::{h_stack, text};
 use floem::{IntoView, View, ViewId};
@@ -10,17 +8,22 @@ fn main() {
         .enable_logging()
         .handlers(vec![add_item()])
         .state(|state| {
-            let items = (1..=5).into_iter().map(ListItem::new).collect::<Vec<_>>();
-            state.insert_view("list_items", items);
+            let items = (1..=5).into_iter().map(ListItem::new).collect_viewable();
+
+            state.insert("list_items", items);
         })
         .run();
 }
 
 #[fiber::task]
 fn add_item(state: StateCtx) {
-    state.update_view::<ListItem>("list_items", |items| {
-        items.push(ListItem::new(items.len() + 1));
+    state.update::<Vec<Box<dyn Viewable>>>("list_items", |items| {
+        let v: Box<dyn Viewable> = Box::new(ListItem::new(items.len() + 1));
+        items.push(v);
     })
+    // state.update_view::<ListItem>("list_items", |items| {
+    //     items.push(ListItem::new(items.len() + 1));
+    // })
 }
 
 #[derive(Clone)]
@@ -48,8 +51,8 @@ impl View for ListItem {
 
 impl Viewable for ListItem {
     fn into_anyview(&self) -> floem::AnyView {
-        let name = text(&self.name);
-        let value = text(&self.value);
-        h_stack((name, value)).css(&["list-item"]).into_any()
+        let name = text(&self.name).css("list-item-header");
+        let value = text(&self.value).css("list-item-text");
+        h_stack((name, value)).css("list-item").into_any()
     }
 }

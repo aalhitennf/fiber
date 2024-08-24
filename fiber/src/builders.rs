@@ -6,13 +6,14 @@ use floem::reactive::{use_context, RwSignal};
 use floem::style::Style;
 use floem::unit::{PxPct, PxPctAuto};
 use floem::views::{
-    button, container, dyn_view, empty, h_stack, h_stack_from_iter, label, stack_from_iter, text,
+    button, container, dyn_view, empty, h_stack_from_iter, label, stack_from_iter, text,
     text_input, v_stack_from_iter, Decorators,
 };
 use floem::{AnyView, IntoView, View};
 use fml::{Attribute, AttributeValue, Element, ElementKind, Node, VariableName, VariableType};
 
 use crate::observer::SourceObserver;
+use crate::state::Viewable;
 use crate::theme::parser::{parse_color, parse_px_pct, parse_pxpctauto};
 use crate::theme::{StyleCss, Theme};
 use crate::StateCtx;
@@ -90,13 +91,13 @@ fn build_root(elem: &Element) -> AnyView {
     let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
     container(children)
         .style(Style::size_full)
-        .css(&["root"])
+        .css("root")
         .into_any()
 }
 
 fn build_box(elem: &Element) -> AnyView {
     let children = elem.children.clone().iter().map(node).collect::<Vec<_>>();
-    container(children).css(&["box"]).into_any()
+    container(children).css("box").into_any()
 }
 
 fn build_label(elem: &Element) -> AnyView {
@@ -188,17 +189,17 @@ fn build_button(elem: &Element) -> AnyView {
         log::debug!("Button without onclick attribute");
     }
 
-    button.css(&["button"])
+    button.css("button")
 }
 
 fn build_hstack(elem: &Element) -> AnyView {
     let children = elem.children.iter().map(node);
-    h_stack_from_iter(children).css(&["hstack"]).into_any()
+    h_stack_from_iter(children).css("hstack").into_any()
 }
 
 fn build_vstack(elem: &Element) -> AnyView {
     let children = elem.children.iter().map(node);
-    v_stack_from_iter(children).css(&["vstack"]).into_any()
+    v_stack_from_iter(children).css("vstack").into_any()
 }
 
 fn build_input(elem: &Element) -> AnyView {
@@ -244,7 +245,12 @@ fn build_list(elem: &Element) -> AnyView {
 
     let state = use_context::<StateCtx>().unwrap();
 
-    let Some(items_sig) = state.get_view(varname) else {
+    // let Some(items_sig) = state.get_view(varname) else {
+    //     log::warn!("State has no variable '{varname}'");
+    //     return container(empty()).into_any();
+    // };
+
+    let Some(items_sig) = state.get::<Vec<Box<dyn Viewable>>>(varname) else {
         log::warn!("State has no variable '{varname}'");
         return container(empty()).into_any();
     };
@@ -256,7 +262,14 @@ fn build_list(elem: &Element) -> AnyView {
 
     dyn_view(move || {
         let style_attrs = style_attrs.clone();
-        let items = items_sig.with(|s| s.iter().map(|f| f.into_anyview()).collect::<Vec<_>>());
+        let items = items_sig.with(|s| {
+            if let Some(v) = (*s).downcast_ref::<Vec<Box<dyn Viewable>>>() {
+                v.iter().map(|f| f.into_anyview()).collect::<Vec<_>>()
+            } else {
+                log::error!("Cast to Viewable failed in build_list");
+                Vec::new()
+            }
+        });
         stack_from_iter(items).style(move |s| s.apply(style_attrs.clone()))
     })
     .into_any()

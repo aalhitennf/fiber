@@ -124,7 +124,7 @@ impl App {
         let theme_provider = theme_provider(
             move || {
                 dyn_view(move || observer.with(|rt| builders::source(rt.main()).into_any()))
-                    .css(&["body"])
+                    .css("body")
                     .debug_name("Body")
             },
             ThemeOptions::with_path(self.path.join("styles")),
